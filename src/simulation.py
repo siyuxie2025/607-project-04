@@ -20,9 +20,84 @@ class SimulationStudy:
     - Running factorial designs (all combinations of generators and bandit algorithms)
     - Computing Monte Carlo confidence intervals for estimates
     - Storing and reporting results
+
+    NEW: Flexible Beta and Alpha Generation
+    =========================================
+    This class now supports flexible generation of true parameters:
+    - beta_generator: Control distribution of coefficient vectors
+    - alpha_generator: Control distribution of intercepts
+    - Supports any DataGenerator (Normal, Uniform, T-distribution, etc.)
+    - Can specify different generators per arm
+    
+    This enables studying:
+    - Effect of parameter heterogeneity across arms
+    - Robustness to different parameter distributions
+    - Scenarios with sparse vs dense coefficients
     """
     def __init__(self, n_sim, K, d, T, q, h, tau, err_generator, context_generator, 
+                 context_generator, beta_generator=None, alpha_generator=None,
                  beta_low=[0.0, 0.5], beta_high=[1, 1.5], random_seed=None):
+        """
+        Initialize the simulation study.
+
+        Parameters
+        ----------
+        n_sim : int
+            Number of simulation replications
+        K : int
+            Number of arms
+        d : int
+            Dimension of context vectors
+        T : int
+            Time horizon
+        q : int
+            Number of forced samples per arm
+        h : float
+            Difference threshold
+        tau : float
+            Quantile level
+        err_generator : DataGenerator
+            Generator for error terms
+        context_generator : DataGenerator
+            Generator for context vectors
+        beta_generator : DataGenerator or list of DataGenerator, optional
+            Generator(s) for beta coefficients. Options:
+            - None: Uses default Uniform(beta_low, beta_high) 
+            - Single DataGenerator: All arms use same distribution
+            - List of K DataGenerators: beta_generator[k] used for arm k
+            Examples:
+            - NormalGenerator(mean=0, std=1): Gaussian coefficients
+            - UniformGenerator(low=-1, high=1): Uniform in [-1,1]
+            - [NormalGenerator(mean=i, std=1) for i in range(K)]: Heterogeneous
+        alpha_generator : DataGenerator or list of DataGenerator, optional
+            Generator(s) for alpha intercepts. Same options as beta_generator.
+        beta_low : list, optional
+            Lower bounds for default uniform beta 
+        beta_high : list, optional
+            Upper bounds for default uniform beta
+        random_seed : int, optional
+            Random seed for reproducibility
+
+        Examples
+        --------
+        # Default uniform beta (backward compatible)
+        study = SimulationStudy(n_sim=50, K=2, d=10, T=100, ...)
+        
+        # Gaussian beta with zero mean
+        beta_gen = NormalGenerator(mean=0, std=1)
+        study = SimulationStudy(..., beta_generator=beta_gen)
+        
+        # Different distributions per arm
+        beta_gens = [
+            NormalGenerator(mean=0, std=1),  # Arm 0: Gaussian
+            UniformGenerator(low=0.5, high=1.5)  # Arm 1: Uniform
+        ]
+        study = SimulationStudy(..., K=2, beta_generator=beta_gens)
+        
+        # Sparse coefficients (many zeros)
+        beta_gen = UniformGenerator(low=-0.5, high=0.5)
+        study = SimulationStudy(..., beta_generator=beta_gen)
+        """
         self.n_sim = n_sim
         self.K = K
         self.d = d
@@ -32,6 +107,8 @@ class SimulationStudy:
         self.tau = tau
         self.err_generator = err_generator
         self.context_generator = context_generator
+        self.beta_generator = beta_generator
+        self.alpha_generator = alpha_generator
         self.random_seed = random_seed
 
         if random_seed is not None:
@@ -43,13 +120,8 @@ class SimulationStudy:
         self.q_err = np.quantile(self.err_generator.generate(2000, rng=self.rng), self.tau)
 
         # Generate real beta and alpha values once for all simulations
-        beta1 = UniformGenerator(low=beta_low[0], high=beta_high[0]).generate((self.K//2, self.d), rng=self.rng)
-        beta2 = UniformGenerator(low=beta_low[1], high=beta_high[1]).generate((self.K-self.K//2, self.d), rng=self.rng)
-        self.beta_real_value = np.vstack([beta1, beta2])
-        
-        alpha1 = UniformGenerator(low=beta_low[0], high=beta_high[0]).generate(self.K//2, rng=self.rng)
-        alpha2 = UniformGenerator(low=beta_low[0], high=beta_high[0]).generate(self.K-self.K//2, rng=self.rng)
-        self.alpha_real_value = np.concatenate([alpha1, alpha2])
+        self.beta_real_value = self._generate_beta_values(beta_low, beta_high)
+        self.alpha_real_value = self._generate_alpha_values(beta_low, beta_high)
 
         # Store results
         self.results = None
