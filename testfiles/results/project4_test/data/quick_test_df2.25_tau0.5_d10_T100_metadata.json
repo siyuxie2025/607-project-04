@@ -1,0 +1,14 @@
+{
+  "n_sim": 5,
+  "K": 2,
+  "d": 10,
+  "T": 100,
+  "tau": 0.5,
+  "algorithms": [
+    "ForcedSampling",
+    "EpsilonGreedy"
+  ],
+  "high_dim": false,
+  "err_generator": "t(df=2.25)",
+  "random_seed": 1010
+}

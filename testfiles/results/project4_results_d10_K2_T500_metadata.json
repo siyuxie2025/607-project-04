@@ -1,0 +1,16 @@
+{
+  "n_sim": 50,
+  "K": 2,
+  "d": 10,
+  "T": 500,
+  "tau": 0.5,
+  "algorithms": [
+    "ForcedSampling",
+    "LinUCB",
+    "EpsilonGreedy",
+    "ThompsonSampling"
+  ],
+  "high_dim": false,
+  "err_generator": "t(df=2.25)",
+  "random_seed": 1010
+}
