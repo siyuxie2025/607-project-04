@@ -1,438 +1,563 @@
 """
-Project 4 Results Analysis
-===========================
+Project 4 Analysis Script
+==========================
 
-Comprehensive analysis of multi-algorithm comparison results.
+Analyze and visualize results from Project 4 experiments.
 
-Features:
-- Load and aggregate results from multiple experiments
-- Statistical comparison between algorithms
-- Regret convergence analysis
-- Beta error analysis
-- Computational cost comparison
-- LaTeX table generation
+Usage:
+    python project4_analysis.py                    # Analyze all scenarios
+    python project4_analysis.py --scenario default # Analyze single scenario
+    python project4_analysis.py --experiment df_sweep # Analyze experiment
 """
 
+import argparse
+import sys
+import os
+from pathlib import Path
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from pathlib import Path
 import pickle
-import json
-from typing import Dict, List, Tuple
+import glob
 from scipy import stats
 
+sys.path.insert(0, 'src')
 
-class Project4Analyzer:
-    """
-    Analyzer for Project 4 results.
+# Set plot style
+sns.set_style("whitegrid")
+plt.rcParams['figure.dpi'] = 300
+plt.rcParams['savefig.dpi'] = 300
+
+Path('results/project4/analysis').mkdir(parents=True, exist_ok=True)
+
+
+class Project4Analysis:
+    """Analysis and visualization for Project 4 results."""
     
-    Loads results from multiple experiments and provides
-    comprehensive statistical analysis and visualization.
-    """
+    @staticmethod
+    def load_results(filepath):
+        """Load results from pickle file."""
+        with open(filepath, 'rb') as f:
+            return pickle.load(f)
     
-    def __init__(self, results_dir: str = 'results/project4'):
-        """
-        Initialize analyzer.
+    @staticmethod
+    def analyze_scenario(scenario_name):
+        """Analyze single scenario results."""
+        print(f"\n{'='*80}")
+        print(f"Analyzing Scenario: {scenario_name}")
+        print('='*80)
         
-        Parameters
-        ----------
-        results_dir : str
-            Directory containing experiment results
-        """
-        self.results_dir = Path(results_dir)
-        self.experiments = {}
-        self.summary_stats = None
-    
-    def load_experiments(self, pattern: str = '*.pkl'):
-        """
-        Load all experiment results matching pattern.
+        filepath = f'results/project4/scenario_{scenario_name}.pkl'
         
-        Parameters
-        ----------
-        pattern : str
-            Glob pattern for result files
-        """
-        data_dir = self.results_dir / 'data'
-        result_files = list(data_dir.glob(pattern))
+        if not os.path.exists(filepath):
+            print(f"Error: {filepath} not found")
+            print("Run: python project4_main.py --scenario {scenario_name} first")
+            return
         
-        print(f"Loading {len(result_files)} experiment files...")
+        results = Project4Analysis.load_results(filepath)
         
-        for filepath in result_files:
-            exp_name = filepath.stem
-            
-            # Load results
-            with open(filepath, 'rb') as f:
-                results = pickle.load(f)
-            
-            # Load metadata if available
-            metadata_path = filepath.parent / f"{exp_name}_metadata.json"
-            metadata = None
-            if metadata_path.exists():
-                with open(metadata_path, 'r') as f:
-                    metadata = json.load(f)
-            
-            self.experiments[exp_name] = {
-                'results': results,
-                'metadata': metadata
-            }
+        # Create summary table
+        summary = Project4Analysis._create_summary_table(results)
+        print("\nSummary Statistics:")
+        print(summary.to_string(index=False))
         
-        print(f"✓ Loaded {len(self.experiments)} experiments")
-    
-    def compute_summary_statistics(self):
-        """
-        Compute summary statistics for all experiments.
-        
-        Returns
-        -------
-        DataFrame
-            Summary statistics for each experiment and algorithm
-        """
-        summary_data = []
-        
-        for exp_name, exp_data in self.experiments.items():
-            results = exp_data['results']
-            metadata = exp_data['metadata'] or {}
-            
-            for algo_name, algo_results in results.items():
-                regret = algo_results['cumulative_regret']  # (n_sim, T)
-                beta_errors = algo_results['beta_errors']   # (n_sim, T, K)
-                
-                # Final values
-                final_regret = regret[:, -1]
-                final_beta = np.mean(beta_errors[:, -1, :], axis=1)
-                
-                # Compute statistics
-                summary_data.append({
-                    'Experiment': exp_name,
-                    'Algorithm': algo_name,
-                    'df': metadata.get('err_generator', 'Unknown'),
-                    'd': metadata.get('d', 'Unknown'),
-                    'T': metadata.get('T', 'Unknown'),
-                    'High_Dim': metadata.get('high_dim', False),
-                    'Mean_Regret': np.mean(final_regret),
-                    'Std_Regret': np.std(final_regret),
-                    'Median_Regret': np.median(final_regret),
-                    'Q25_Regret': np.percentile(final_regret, 25),
-                    'Q75_Regret': np.percentile(final_regret, 75),
-                    'Mean_Beta_Error': np.mean(final_beta),
-                    'Std_Beta_Error': np.std(final_beta),
-                    'Min_Regret': np.min(final_regret),
-                    'Max_Regret': np.max(final_regret)
-                })
-        
-        self.summary_stats = pd.DataFrame(summary_data)
-        return self.summary_stats
-    
-    def statistical_tests(self):
-        """
-        Perform statistical tests comparing algorithms.
-        
-        Returns
-        -------
-        DataFrame
-            Pairwise comparison results
-        """
-        if self.summary_stats is None:
-            self.compute_summary_statistics()
-        
-        test_results = []
-        
-        # Group by experiment
-        for exp_name in self.summary_stats['Experiment'].unique():
-            exp_data = self.summary_stats[
-                self.summary_stats['Experiment'] == exp_name
-            ]
-            
-            algorithms = exp_data['Algorithm'].unique()
-            
-            # Pairwise comparisons
-            for i, algo1 in enumerate(algorithms):
-                for algo2 in algorithms[i+1:]:
-                    # Get regrets for both algorithms
-                    regret1 = self.experiments[exp_name]['results'][algo1]['cumulative_regret'][:, -1]
-                    regret2 = self.experiments[exp_name]['results'][algo2]['cumulative_regret'][:, -1]
-                    
-                    # Paired t-test
-                    t_stat, p_value = stats.ttest_rel(regret1, regret2)
-                    
-                    # Effect size (Cohen's d)
-                    diff = regret1 - regret2
-                    cohens_d = np.mean(diff) / np.std(diff)
-                    
-                    test_results.append({
-                        'Experiment': exp_name,
-                        'Algorithm_1': algo1,
-                        'Algorithm_2': algo2,
-                        'Mean_Diff': np.mean(diff),
-                        't_statistic': t_stat,
-                        'p_value': p_value,
-                        'Cohens_d': cohens_d,
-                        'Significant': p_value < 0.05,
-                        'Winner': algo1 if np.mean(diff) < 0 else algo2
-                    })
-        
-        return pd.DataFrame(test_results)
-    
-    def plot_algorithm_comparison(self, experiment_name: str, save_path: str = None):
-        """
-        Create comprehensive comparison plot for one experiment.
-        
-        Parameters
-        ----------
-        experiment_name : str
-            Name of experiment to plot
-        save_path : str, optional
-            Path to save figure
-        """
-        if experiment_name not in self.experiments:
-            raise ValueError(f"Experiment '{experiment_name}' not found")
-        
-        results = self.experiments[experiment_name]['results']
-        algorithms = list(results.keys())
-        
-        # Create figure with 2x2 subplots
-        fig, axes = plt.subplots(2, 2, figsize=(16, 12))
-        
-        # Plot 1: Cumulative Regret
-        ax = axes[0, 0]
-        for algo in algorithms:
-            regret = results[algo]['cumulative_regret']
-            mean_regret = np.mean(regret, axis=0)
-            std_regret = np.std(regret, axis=0) / np.sqrt(regret.shape[0])
-            
-            T = regret.shape[1]
-            steps = np.arange(1, T + 1)
-            
-            ax.plot(steps, mean_regret, label=algo, linewidth=2.5)
-            ax.fill_between(steps,
-                           mean_regret - 1.96 * std_regret,
-                           mean_regret + 1.96 * std_regret,
-                           alpha=0.2)
-        
-        ax.set_xlabel('Time', fontsize=12, fontweight='bold')
-        ax.set_ylabel('Cumulative Regret', fontsize=12, fontweight='bold')
-        ax.set_title('(A) Cumulative Regret', fontsize=13)
-        ax.legend(fontsize=10)
-        ax.grid(True, alpha=0.3)
-        
-        # Plot 2: Beta Errors
-        ax = axes[0, 1]
-        for algo in algorithms:
-            beta_errors = results[algo]['beta_errors']
-            avg_errors = np.mean(beta_errors, axis=2)  # Average over arms
-            mean_error = np.mean(avg_errors, axis=0)
-            std_error = np.std(avg_errors, axis=0) / np.sqrt(avg_errors.shape[0])
-            
-            T = beta_errors.shape[1]
-            steps = np.arange(1, T + 1)
-            
-            ax.plot(steps, mean_error, label=algo, linewidth=2.5)
-            ax.fill_between(steps,
-                           mean_error - 1.96 * std_error,
-                           mean_error + 1.96 * std_error,
-                           alpha=0.2)
-        
-        ax.set_xlabel('Time', fontsize=12, fontweight='bold')
-        ax.set_ylabel('Beta Estimation Error', fontsize=12, fontweight='bold')
-        ax.set_title('(B) Parameter Estimation', fontsize=13)
-        ax.legend(fontsize=10)
-        ax.grid(True, alpha=0.3)
-        
-        # Plot 3: Final Regret Distribution
-        ax = axes[1, 0]
-        final_regrets = [results[algo]['cumulative_regret'][:, -1] for algo in algorithms]
-        
-        positions = np.arange(len(algorithms))
-        bp = ax.boxplot(final_regrets, labels=algorithms, patch_artist=True)
-        
-        # Color boxes
-        colors = plt.cm.Set3(np.linspace(0, 1, len(algorithms)))
-        for patch, color in zip(bp['boxes'], colors):
-            patch.set_facecolor(color)
-        
-        ax.set_ylabel('Final Regret', fontsize=12, fontweight='bold')
-        ax.set_title('(C) Final Regret Distribution', fontsize=13)
-        ax.grid(True, alpha=0.3, axis='y')
-        plt.setp(ax.xaxis.get_majorticklabels(), rotation=45, ha='right')
-        
-        # Plot 4: Regret Reduction (vs baseline)
-        ax = axes[1, 1]
-        baseline_algo = algorithms[0]  # Use first as baseline
-        baseline_regret = results[baseline_algo]['cumulative_regret'][:, -1]
-        
-        improvements = []
-        for algo in algorithms:
-            algo_regret = results[algo]['cumulative_regret'][:, -1]
-            improvement = (baseline_regret - algo_regret) / baseline_regret * 100
-            improvements.append(np.mean(improvement))
-        
-        bars = ax.bar(algorithms, improvements, color=colors)
-        ax.axhline(y=0, color='black', linestyle='--', linewidth=1)
-        ax.set_ylabel('Regret Reduction vs Baseline (%)', fontsize=12, fontweight='bold')
-        ax.set_title(f'(D) Improvement over {baseline_algo}', fontsize=13)
-        ax.grid(True, alpha=0.3, axis='y')
-        plt.setp(ax.xaxis.get_majorticklabels(), rotation=45, ha='right')
-        
-        # Add value labels on bars
-        for bar, improvement in zip(bars, improvements):
-            height = bar.get_height()
-            ax.text(bar.get_x() + bar.get_width()/2., height,
-                   f'{improvement:.1f}%',
-                   ha='center', va='bottom' if height >= 0 else 'top',
-                   fontsize=9, fontweight='bold')
-        
-        plt.suptitle(f'Algorithm Comparison: {experiment_name}',
-                    fontsize=16, fontweight='bold', y=0.995)
-        plt.tight_layout()
-        
-        if save_path:
-            plt.savefig(save_path, dpi=300, bbox_inches='tight')
-            print(f"Saved: {save_path}")
-        else:
-            plt.show()
-        
-        plt.close()
-    
-    def generate_latex_table(self, save_path: str = None) -> str:
-        """
-        Generate LaTeX table of summary statistics.
-        
-        Parameters
-        ----------
-        save_path : str, optional
-            Path to save LaTeX file
-        
-        Returns
-        -------
-        str
-            LaTeX table code
-        """
-        if self.summary_stats is None:
-            self.compute_summary_statistics()
-        
-        # Select key columns
-        table_df = self.summary_stats[[
-            'Experiment', 'Algorithm', 'Mean_Regret', 'Std_Regret',
-            'Mean_Beta_Error', 'Std_Beta_Error'
-        ]].copy()
-        
-        # Round values
-        table_df['Mean_Regret'] = table_df['Mean_Regret'].round(2)
-        table_df['Std_Regret'] = table_df['Std_Regret'].round(2)
-        table_df['Mean_Beta_Error'] = table_df['Mean_Beta_Error'].round(4)
-        table_df['Std_Beta_Error'] = table_df['Std_Beta_Error'].round(4)
-        
-        # Generate LaTeX
-        latex_str = table_df.to_latex(
-            index=False,
-            column_format='lcccc',
-            caption='Algorithm Performance Comparison',
-            label='tab:algorithm_comparison'
+        # Save summary
+        summary.to_csv(
+            f'results/project4/analysis/summary_{scenario_name}.csv',
+            index=False
         )
         
-        if save_path:
-            with open(save_path, 'w') as f:
-                f.write(latex_str)
-            print(f"Saved LaTeX table to: {save_path}")
+        # Create visualizations
+        Project4Analysis._plot_regret_comparison(
+            results, 
+            title=f'Regret Comparison: {scenario_name.title()}',
+            save_path=f'results/project4/analysis/regret_{scenario_name}.pdf'
+        )
         
-        return latex_str
+        Project4Analysis._plot_beta_error_comparison(
+            results,
+            title=f'Beta Error: {scenario_name.title()}',
+            save_path=f'results/project4/analysis/beta_error_{scenario_name}.pdf'
+        )
+        
+        Project4Analysis._plot_performance_summary(
+            results,
+            save_path=f'results/project4/analysis/performance_{scenario_name}.pdf'
+        )
+        
+        print(f"\n✓ Analysis complete for {scenario_name}")
+        print(f"  Summary: results/project4/analysis/summary_{scenario_name}.csv")
+        print(f"  Plots: results/project4/analysis/*_{scenario_name}.pdf")
     
-    def create_summary_report(self, output_dir: str = None):
-        """
-        Create comprehensive summary report with all analyses.
-        
-        Parameters
-        ----------
-        output_dir : str, optional
-            Directory to save report files
-        """
-        if output_dir is None:
-            output_dir = self.results_dir / 'summary'
-        else:
-            output_dir = Path(output_dir)
-        
-        output_dir.mkdir(parents=True, exist_ok=True)
-        
+    @staticmethod
+    def analyze_all_scenarios():
+        """Analyze all scenario results."""
         print("\n" + "="*80)
-        print("GENERATING COMPREHENSIVE SUMMARY REPORT")
-        print("="*80 + "\n")
-        
-        # 1. Summary statistics
-        print("Computing summary statistics...")
-        summary = self.compute_summary_statistics()
-        summary.to_csv(output_dir / 'summary_statistics.csv', index=False)
-        print(f"  Saved: {output_dir / 'summary_statistics.csv'}")
-        
-        # 2. Statistical tests
-        print("Performing statistical tests...")
-        tests = self.statistical_tests()
-        tests.to_csv(output_dir / 'statistical_tests.csv', index=False)
-        print(f"  Saved: {output_dir / 'statistical_tests.csv'}")
-        
-        # 3. LaTeX table
-        print("Generating LaTeX table...")
-        latex_path = output_dir / 'summary_table.tex'
-        self.generate_latex_table(save_path=str(latex_path))
-        
-        # 4. Plots for each experiment
-        print("Creating comparison plots...")
-        for exp_name in self.experiments.keys():
-            save_path = output_dir / f'comparison_{exp_name}.pdf'
-            self.plot_algorithm_comparison(exp_name, save_path=str(save_path))
-        
-        print("\n" + "="*80)
-        print("✓ SUMMARY REPORT COMPLETE")
+        print("Analyzing All Scenarios")
         print("="*80)
-        print(f"Output directory: {output_dir}")
-        print("\nGenerated files:")
-        print("  - summary_statistics.csv")
-        print("  - statistical_tests.csv")
-        print("  - summary_table.tex")
-        print("  - comparison_*.pdf (one per experiment)")
-        print("="*80 + "\n")
+        
+        scenario_files = glob.glob('results/project4/scenario_*.pkl')
+        
+        if not scenario_files:
+            print("No scenario results found!")
+            print("Run: python project4_main.py --scenario all")
+            return
+        
+        # Collect all summaries
+        all_summaries = []
+        
+        for filepath in sorted(scenario_files):
+            scenario_name = os.path.basename(filepath).replace('scenario_', '').replace('.pkl', '')
+            print(f"\nProcessing: {scenario_name}")
+            
+            results = Project4Analysis.load_results(filepath)
+            summary = Project4Analysis._create_summary_table(results)
+            summary['scenario'] = scenario_name
+            all_summaries.append(summary)
+        
+        # Combine all summaries
+        combined = pd.concat(all_summaries, ignore_index=True)
+        
+        # Reorder columns
+        cols = ['scenario', 'algorithm'] + [c for c in combined.columns if c not in ['scenario', 'algorithm']]
+        combined = combined[cols]
+        
+        print("\n" + "="*80)
+        print("COMBINED SUMMARY - ALL SCENARIOS")
+        print("="*80)
+        print(combined.to_string(index=False))
+        
+        # Save combined summary
+        combined.to_csv('results/project4/analysis/summary_all_scenarios.csv', index=False)
+        
+        # Create comparison plots
+        Project4Analysis._plot_cross_scenario_comparison(
+            combined,
+            save_path='results/project4/analysis/cross_scenario_comparison.pdf'
+        )
+        
+        print("\n✓ Cross-scenario analysis complete")
+        print("  Combined summary: results/project4/analysis/summary_all_scenarios.csv")
+        print("  Comparison plot: results/project4/analysis/cross_scenario_comparison.pdf")
+    
+    @staticmethod
+    def analyze_experiment(experiment_name):
+        """Analyze experimental sweep results."""
+        print(f"\n{'='*80}")
+        print(f"Analyzing Experiment: {experiment_name}")
+        print('='*80)
+        
+        summary_file = f'results/project4/experiments/{experiment_name}_summary.csv'
+        
+        if not os.path.exists(summary_file):
+            print(f"Error: {summary_file} not found")
+            print(f"Run: python project4_experiments.py --experiment {experiment_name}")
+            return
+        
+        df = pd.read_csv(summary_file)
+        
+        print("\nExperiment Summary:")
+        print(df.to_string(index=False))
+        
+        # Create visualizations based on experiment type
+        if 'df' in experiment_name:
+            Project4Analysis._plot_df_sweep(df, save_path='results/project4/analysis/df_sweep.pdf')
+        elif 'tau' in experiment_name:
+            Project4Analysis._plot_tau_sweep(df, save_path='results/project4/analysis/tau_sweep.pdf')
+        elif 'dim' in experiment_name:
+            Project4Analysis._plot_dim_sweep(df, save_path='results/project4/analysis/dim_sweep.pdf')
+        elif 'arms' in experiment_name:
+            Project4Analysis._plot_arms_sweep(df, save_path='results/project4/analysis/arms_sweep.pdf')
+        elif 'beta' in experiment_name:
+            Project4Analysis._plot_beta_comparison(df, save_path='results/project4/analysis/beta_strategy.pdf')
+        
+        print(f"\n✓ Experiment analysis complete")
+    
+    @staticmethod
+    def _create_summary_table(results):
+        """Create summary statistics table from results."""
+        summary_data = []
+        
+        for alg_name in results['algorithms']:
+            regret = results['regret'][alg_name][:, -1]  # Final regret
+            beta_err = results['beta_errors'][alg_name][:, -1, :]  # Final beta error
+            
+            summary_data.append({
+                'algorithm': alg_name,
+                'mean_regret': np.mean(regret),
+                'std_regret': np.std(regret),
+                'median_regret': np.median(regret),
+                'mean_beta_error': np.mean(beta_err),
+                'std_beta_error': np.std(beta_err),
+                'median_beta_error': np.median(beta_err),
+                'runtime_sec': results['computation_time'][alg_name]
+            })
+        
+        return pd.DataFrame(summary_data)
+    
+    @staticmethod
+    def _plot_regret_comparison(results, title='Regret Comparison', save_path=None):
+        """Plot cumulative regret for all algorithms."""
+        fig, ax = plt.subplots(figsize=(12, 7))
+        
+        T = results['regret'][results['algorithms'][0]].shape[1]
+        steps = np.arange(1, T + 1)
+        
+        colors = {'LinUCB': 'blue', 'ThompsonSampling': 'green',
+                  'EpsilonGreedy': 'orange', 'ForcedSampling': 'red'}
+        
+        for alg_name in results['algorithms']:
+            regret = results['regret'][alg_name]
+            mean_regret = np.mean(regret, axis=0)
+            std_regret = np.std(regret, axis=0)
+            
+            color = colors.get(alg_name, 'black')
+            
+            ax.plot(steps, mean_regret, label=alg_name, color=color, linewidth=2.5)
+            ax.fill_between(steps, 
+                           mean_regret - std_regret, 
+                           mean_regret + std_regret,
+                           color=color, alpha=0.2)
+        
+        ax.set_xlabel('Time Step', fontsize=13, fontweight='bold')
+        ax.set_ylabel('Cumulative Regret', fontsize=13, fontweight='bold')
+        ax.set_title(title, fontsize=14, fontweight='bold')
+        ax.legend(fontsize=11, loc='best')
+        ax.grid(True, alpha=0.3)
+        
+        plt.tight_layout()
+        if save_path:
+            plt.savefig(save_path, dpi=300, bbox_inches='tight')
+            print(f"  Saved: {save_path}")
+        plt.close()
+    
+    @staticmethod
+    def _plot_beta_error_comparison(results, title='Beta Error Comparison', save_path=None):
+        """Plot beta estimation error for all algorithms."""
+        fig, ax = plt.subplots(figsize=(12, 7))
+        
+        T = results['beta_errors'][results['algorithms'][0]].shape[1]
+        steps = np.arange(1, T + 1)
+        
+        colors = {'LinUCB': 'blue', 'ThompsonSampling': 'green',
+                  'EpsilonGreedy': 'orange', 'ForcedSampling': 'red'}
+        
+        for alg_name in results['algorithms']:
+            beta_err = results['beta_errors'][alg_name]
+            # Average across arms
+            beta_err_avg = np.mean(beta_err, axis=2)
+            mean_err = np.mean(beta_err_avg, axis=0)
+            std_err = np.std(beta_err_avg, axis=0)
+            
+            color = colors.get(alg_name, 'black')
+            
+            ax.plot(steps, mean_err, label=alg_name, color=color, linewidth=2.5)
+            ax.fill_between(steps, 
+                           mean_err - std_err,
+                           mean_err + std_err,
+                           color=color, alpha=0.2)
+        
+        ax.set_xlabel('Time Step', fontsize=13, fontweight='bold')
+        ax.set_ylabel('Beta Estimation Error', fontsize=13, fontweight='bold')
+        ax.set_title(title, fontsize=14, fontweight='bold')
+        ax.legend(fontsize=11, loc='best')
+        ax.grid(True, alpha=0.3)
+        
+        plt.tight_layout()
+        if save_path:
+            plt.savefig(save_path, dpi=300, bbox_inches='tight')
+            print(f"  Saved: {save_path}")
+        plt.close()
+    
+    @staticmethod
+    def _plot_performance_summary(results, save_path=None):
+        """Create comprehensive performance summary plot."""
+        fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+        
+        algorithms = results['algorithms']
+        
+        # 1. Final Regret Box Plot
+        ax1 = axes[0, 0]
+        final_regrets = [results['regret'][alg][:, -1] for alg in algorithms]
+        ax1.boxplot(final_regrets, labels=algorithms)
+        ax1.set_ylabel('Final Regret', fontweight='bold')
+        ax1.set_title('Final Regret Distribution', fontweight='bold')
+        ax1.grid(True, alpha=0.3)
+        
+        # 2. Final Beta Error Box Plot
+        ax2 = axes[0, 1]
+        final_beta_errs = [np.mean(results['beta_errors'][alg][:, -1, :], axis=1) 
+                           for alg in algorithms]
+        ax2.boxplot(final_beta_errs, labels=algorithms)
+        ax2.set_ylabel('Final Beta Error', fontweight='bold')
+        ax2.set_title('Beta Error Distribution', fontweight='bold')
+        ax2.grid(True, alpha=0.3)
+        
+        # 3. Computation Time Bar Chart
+        ax3 = axes[1, 0]
+        runtimes = [results['computation_time'][alg] for alg in algorithms]
+        bars = ax3.bar(algorithms, runtimes, color=['blue', 'green', 'orange', 'red'])
+        ax3.set_ylabel('Runtime (seconds)', fontweight='bold')
+        ax3.set_title('Computation Time', fontweight='bold')
+        ax3.grid(True, alpha=0.3, axis='y')
+        
+        # Add values on bars
+        for bar in bars:
+            height = bar.get_height()
+            ax3.text(bar.get_x() + bar.get_width()/2., height,
+                    f'{height:.1f}s', ha='center', va='bottom', fontweight='bold')
+        
+        # 4. Performance vs Speed Trade-off
+        ax4 = axes[1, 1]
+        mean_regrets = [np.mean(results['regret'][alg][:, -1]) for alg in algorithms]
+        colors_list = ['blue', 'green', 'orange', 'red']
+        
+        ax4.scatter(runtimes, mean_regrets, s=200, c=colors_list, alpha=0.7)
+        
+        for i, alg in enumerate(algorithms):
+            ax4.annotate(alg, (runtimes[i], mean_regrets[i]),
+                        xytext=(5, 5), textcoords='offset points',
+                        fontsize=10, fontweight='bold')
+        
+        ax4.set_xlabel('Runtime (seconds)', fontweight='bold')
+        ax4.set_ylabel('Mean Final Regret', fontweight='bold')
+        ax4.set_title('Performance vs Speed Trade-off', fontweight='bold')
+        ax4.grid(True, alpha=0.3)
+        
+        plt.tight_layout()
+        if save_path:
+            plt.savefig(save_path, dpi=300, bbox_inches='tight')
+            print(f"  Saved: {save_path}")
+        plt.close()
+    
+    @staticmethod
+    def _plot_cross_scenario_comparison(df, save_path=None):
+        """Plot cross-scenario comparison."""
+        fig, axes = plt.subplots(1, 2, figsize=(16, 6))
+        
+        # Regret comparison
+        ax1 = axes[0]
+        pivot_regret = df.pivot_table(values='mean_regret', 
+                                       index='algorithm', 
+                                       columns='scenario')
+        pivot_regret.plot(kind='bar', ax=ax1, rot=45)
+        ax1.set_ylabel('Mean Final Regret', fontweight='bold', fontsize=12)
+        ax1.set_title('Regret Across Scenarios', fontweight='bold', fontsize=13)
+        ax1.legend(title='Scenario', fontsize=10)
+        ax1.grid(True, alpha=0.3, axis='y')
+        
+        # Beta error comparison
+        ax2 = axes[1]
+        pivot_beta = df.pivot_table(values='mean_beta_error',
+                                     index='algorithm',
+                                     columns='scenario')
+        pivot_beta.plot(kind='bar', ax=ax2, rot=45)
+        ax2.set_ylabel('Mean Beta Error', fontweight='bold', fontsize=12)
+        ax2.set_title('Beta Error Across Scenarios', fontweight='bold', fontsize=13)
+        ax2.legend(title='Scenario', fontsize=10)
+        ax2.grid(True, alpha=0.3, axis='y')
+        
+        plt.tight_layout()
+        if save_path:
+            plt.savefig(save_path, dpi=300, bbox_inches='tight')
+            print(f"  Saved: {save_path}")
+        plt.close()
+    
+    @staticmethod
+    def _plot_df_sweep(df, save_path=None):
+        """Plot df sweep results."""
+        fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+        
+        for alg in df['algorithm'].unique():
+            alg_data = df[df['algorithm'] == alg]
+            
+            axes[0].plot(alg_data['df'], alg_data['mean_regret'], 
+                        marker='o', label=alg, linewidth=2, markersize=8)
+            axes[1].plot(alg_data['df'], alg_data['mean_beta_error'],
+                        marker='o', label=alg, linewidth=2, markersize=8)
+        
+        axes[0].set_xlabel('Degrees of Freedom (df)', fontweight='bold', fontsize=12)
+        axes[0].set_ylabel('Mean Final Regret', fontweight='bold', fontsize=12)
+        axes[0].set_title('Regret vs Tail Heaviness', fontweight='bold', fontsize=13)
+        axes[0].legend(fontsize=10)
+        axes[0].grid(True, alpha=0.3)
+        
+        axes[1].set_xlabel('Degrees of Freedom (df)', fontweight='bold', fontsize=12)
+        axes[1].set_ylabel('Mean Beta Error', fontweight='bold', fontsize=12)
+        axes[1].set_title('Beta Error vs Tail Heaviness', fontweight='bold', fontsize=13)
+        axes[1].legend(fontsize=10)
+        axes[1].grid(True, alpha=0.3)
+        
+        plt.tight_layout()
+        if save_path:
+            plt.savefig(save_path, dpi=300, bbox_inches='tight')
+            print(f"  Saved: {save_path}")
+        plt.close()
+    
+    @staticmethod
+    def _plot_tau_sweep(df, save_path=None):
+        """Plot tau sweep results."""
+        fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+        
+        for alg in df['algorithm'].unique():
+            alg_data = df[df['algorithm'] == alg]
+            
+            axes[0].plot(alg_data['tau'], alg_data['mean_regret'],
+                        marker='o', label=alg, linewidth=2, markersize=8)
+            axes[1].plot(alg_data['tau'], alg_data['mean_beta_error'],
+                        marker='o', label=alg, linewidth=2, markersize=8)
+        
+        axes[0].set_xlabel('Quantile Level (τ)', fontweight='bold', fontsize=12)
+        axes[0].set_ylabel('Mean Final Regret', fontweight='bold', fontsize=12)
+        axes[0].set_title('Regret vs Quantile Level', fontweight='bold', fontsize=13)
+        axes[0].legend(fontsize=10)
+        axes[0].grid(True, alpha=0.3)
+        
+        axes[1].set_xlabel('Quantile Level (τ)', fontweight='bold', fontsize=12)
+        axes[1].set_ylabel('Mean Beta Error', fontweight='bold', fontsize=12)
+        axes[1].set_title('Beta Error vs Quantile Level', fontweight='bold', fontsize=13)
+        axes[1].legend(fontsize=10)
+        axes[1].grid(True, alpha=0.3)
+        
+        plt.tight_layout()
+        if save_path:
+            plt.savefig(save_path, dpi=300, bbox_inches='tight')
+            print(f"  Saved: {save_path}")
+        plt.close()
+    
+    @staticmethod
+    def _plot_dim_sweep(df, save_path=None):
+        """Plot dimension sweep results."""
+        fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+        
+        for alg in df['algorithm'].unique():
+            alg_data = df[df['algorithm'] == alg]
+            
+            axes[0].plot(alg_data['d'], alg_data['mean_regret'],
+                        marker='o', label=alg, linewidth=2, markersize=8)
+            axes[1].plot(alg_data['d'], alg_data['mean_beta_error'],
+                        marker='o', label=alg, linewidth=2, markersize=8)
+        
+        axes[0].set_xlabel('Context Dimension (d)', fontweight='bold', fontsize=12)
+        axes[0].set_ylabel('Mean Final Regret', fontweight='bold', fontsize=12)
+        axes[0].set_title('Regret vs Dimension', fontweight='bold', fontsize=13)
+        axes[0].legend(fontsize=10)
+        axes[0].grid(True, alpha=0.3)
+        
+        axes[1].set_xlabel('Context Dimension (d)', fontweight='bold', fontsize=12)
+        axes[1].set_ylabel('Mean Beta Error', fontweight='bold', fontsize=12)
+        axes[1].set_title('Beta Error vs Dimension', fontweight='bold', fontsize=13)
+        axes[1].legend(fontsize=10)
+        axes[1].grid(True, alpha=0.3)
+        
+        plt.tight_layout()
+        if save_path:
+            plt.savefig(save_path, dpi=300, bbox_inches='tight')
+            print(f"  Saved: {save_path}")
+        plt.close()
+    
+    @staticmethod
+    def _plot_arms_sweep(df, save_path=None):
+        """Plot number of arms sweep results."""
+        fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+        
+        for alg in df['algorithm'].unique():
+            alg_data = df[df['algorithm'] == alg]
+            
+            axes[0].plot(alg_data['K'], alg_data['mean_regret'],
+                        marker='o', label=alg, linewidth=2, markersize=8)
+            axes[1].plot(alg_data['K'], alg_data['runtime'],
+                        marker='o', label=alg, linewidth=2, markersize=8)
+        
+        axes[0].set_xlabel('Number of Arms (K)', fontweight='bold', fontsize=12)
+        axes[0].set_ylabel('Mean Final Regret', fontweight='bold', fontsize=12)
+        axes[0].set_title('Regret vs Number of Arms', fontweight='bold', fontsize=13)
+        axes[0].legend(fontsize=10)
+        axes[0].grid(True, alpha=0.3)
+        
+        axes[1].set_xlabel('Number of Arms (K)', fontweight='bold', fontsize=12)
+        axes[1].set_ylabel('Runtime (seconds)', fontweight='bold', fontsize=12)
+        axes[1].set_title('Computation Time vs Number of Arms', fontweight='bold', fontsize=13)
+        axes[1].legend(fontsize=10)
+        axes[1].grid(True, alpha=0.3)
+        
+        plt.tight_layout()
+        if save_path:
+            plt.savefig(save_path, dpi=300, bbox_inches='tight')
+            print(f"  Saved: {save_path}")
+        plt.close()
+    
+    @staticmethod
+    def _plot_beta_comparison(df, save_path=None):
+        """Plot beta strategy comparison."""
+        fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+        
+        # Regret comparison
+        ax1 = axes[0]
+        pivot_regret = df.pivot_table(values='mean_regret',
+                                       index='algorithm',
+                                       columns='beta_strategy')
+        pivot_regret.plot(kind='bar', ax=ax1, rot=45)
+        ax1.set_ylabel('Mean Final Regret', fontweight='bold', fontsize=12)
+        ax1.set_title('Regret by Beta Strategy', fontweight='bold', fontsize=13)
+        ax1.legend(title='Strategy', fontsize=10)
+        ax1.grid(True, alpha=0.3, axis='y')
+        
+        # Beta error comparison
+        ax2 = axes[1]
+        pivot_beta = df.pivot_table(values='mean_beta_error',
+                                     index='algorithm',
+                                     columns='beta_strategy')
+        pivot_beta.plot(kind='bar', ax=ax2, rot=45)
+        ax2.set_ylabel('Mean Beta Error', fontweight='bold', fontsize=12)
+        ax2.set_title('Beta Error by Strategy', fontweight='bold', fontsize=13)
+        ax2.legend(title='Strategy', fontsize=10)
+        ax2.grid(True, alpha=0.3, axis='y')
+        
+        plt.tight_layout()
+        if save_path:
+            plt.savefig(save_path, dpi=300, bbox_inches='tight')
+            print(f"  Saved: {save_path}")
+        plt.close()
 
 
 def main():
-    """Main entry point for analysis."""
-    import argparse
-    
+    """Main execution function."""
     parser = argparse.ArgumentParser(
-        description='Analyze Project 4 results'
+        description='Project 4 Results Analysis',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python project4_analysis.py                           # Analyze all scenarios
+  python project4_analysis.py --scenario default        # Analyze one scenario
+  python project4_analysis.py --experiment df_sweep     # Analyze experiment
+        """
     )
-    parser.add_argument(
-        '--results_dir',
-        default='results/project4',
-        help='Directory containing experiment results'
-    )
-    parser.add_argument(
-        '--pattern',
-        default='*.pkl',
-        help='Pattern for result files'
-    )
-    parser.add_argument(
-        '--output_dir',
-        default=None,
-        help='Directory to save analysis outputs'
-    )
+    
+    parser.add_argument('--scenario', type=str, default=None,
+                       help='Analyze specific scenario')
+    parser.add_argument('--experiment', type=str, default=None,
+                       help='Analyze specific experiment')
+    parser.add_argument('--all', action='store_true',
+                       help='Analyze all scenarios')
     
     args = parser.parse_args()
     
-    # Create analyzer
-    analyzer = Project4Analyzer(results_dir=args.results_dir)
+    analyzer = Project4Analysis()
     
-    # Load experiments
-    analyzer.load_experiments(pattern=args.pattern)
+    if args.scenario:
+        analyzer.analyze_scenario(args.scenario)
+    elif args.experiment:
+        analyzer.analyze_experiment(args.experiment)
+    else:
+        # Default: analyze all scenarios
+        analyzer.analyze_all_scenarios()
     
-    if len(analyzer.experiments) == 0:
-        print("No experiments found!")
-        return
-    
-    # Generate summary report
-    analyzer.create_summary_report(output_dir=args.output_dir)
-    
-    print("\n✓ Analysis complete")
+    print("\n" + "="*80)
+    print("✓ ANALYSIS COMPLETE")
+    print("="*80)
+    print("\nResults in: results/project4/analysis/")
 
 
 if __name__ == "__main__":
