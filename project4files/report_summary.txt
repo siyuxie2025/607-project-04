@@ -1,0 +1,31 @@
+================================================================================
+  PROJECT 4 REPORT RESULTS SUMMARY
+================================================================================
+
+
+DEFAULT (BASELINE)
+--------------------------------------------------------------------------------
+       Algorithm Mean Final Regret Std Final Regret Mean Beta Error Std Beta Error Runtime (s)
+          LinUCB             27.77             8.54          1.1385         0.4414        1.31
+ThompsonSampling             23.50             6.34          1.9343         1.8204        1.50
+   EpsilonGreedy             22.16             7.75          0.8929         0.4675        1.13
+  ForcedSampling             40.95             8.53          0.9685         0.4682        1.61
+
+
+GAUSSIAN BETA
+--------------------------------------------------------------------------------
+       Algorithm Mean Final Regret Std Final Regret Mean Beta Error Std Beta Error Runtime (s)
+          LinUCB             52.28            21.76          0.3067         0.1041       29.33
+ThompsonSampling             95.30            47.25          0.2708         0.0809       30.20
+   EpsilonGreedy             57.80            20.79          0.3126         0.1067       29.84
+  ForcedSampling            255.49            67.73          0.2944         0.1007       34.17
+
+
+SPARSE COEFFICIENTS
+--------------------------------------------------------------------------------
+       Algorithm Mean Final Regret Std Final Regret Mean Beta Error Std Beta Error Runtime (s)
+          LinUCB             28.43             9.81          0.3337         0.1486       26.29
+ThompsonSampling             52.11            12.16          0.2807         0.1091       26.79
+   EpsilonGreedy             30.47            13.53          0.3511         0.1911       26.40
+  ForcedSampling             62.99            16.90          0.2978         0.0976       32.24
+
