@@ -2,7 +2,7 @@
 Comprehensive Examples: Flexible Beta/Alpha Generation
 ======================================================
 
-This script demonstrates the new flexible parameter generation features,
+This script demonstrates the new flexible parameter generation features, 
 allowing you to explore different scenarios:
 
 1. Default uniform beta (backward compatible)
