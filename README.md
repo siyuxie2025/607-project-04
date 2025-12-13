@@ -79,6 +79,7 @@ open results/project4/scenario_default.pdf
 │   ├── project4_methods.py        # Algorithm implementations
 │   ├── project4_experiments.py    # Experimental sweeps (df, tau, d, K)
 │   ├── project4_analysis.py       # Analysis and visualization
+│   ├── project4_demo.py           # Interactive demonstration script
 │   ├── generators.py              # Data generators (local copy)
 │   ├── numerical_stability.py     # Stability utilities (local copy)
 │   ├── presentation_plots.py      # Presentation figure generation
@@ -106,6 +107,50 @@ cd project4files
 source ../venv/bin/activate  # Activate virtual environment
 make quick-test              # Run quick test
 ```
+
+---
+
+## Interactive Demo
+
+For a hands-on introduction to the project, run the interactive demonstration:
+
+```bash
+cd project4files
+python project4_demo.py              # Interactive menu
+```
+
+The demo provides several options:
+
+### 1. Quick Demo (5 sims, 2 algorithms, ~10 seconds)
+```bash
+python project4_demo.py --quick
+```
+Compares Forced Sampling vs Thompson Sampling with minimal configuration.
+
+### 2. All Algorithms Demo (10 sims, 4 algorithms, ~30 seconds)
+```bash
+python project4_demo.py --all
+```
+Compares all 4 algorithms and shows a winner analysis.
+
+### 3. Scenario Comparison Demo (~45 seconds)
+```bash
+python project4_demo.py --scenarios
+```
+Shows Thompson Sampling performance across Uniform, Gaussian, and Sparse beta distributions.
+
+### 4. Custom Demo
+Select option 4 in interactive mode to specify your own:
+- Number of simulations
+- Time horizon
+- Number of arms
+- Context dimension
+- Beta distribution type
+
+**Demo Output:**
+- Summary statistics table
+- Comparison plots (saved as PDF)
+- Key observations and insights
 
 ---
 
