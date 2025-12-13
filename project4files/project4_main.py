@@ -271,8 +271,19 @@ class Project4Scenarios:
         results = study.run_simulation()
         study.save_results('results/project4/scenario_multi_arm.pkl')
         study.plot_comparison(save_path='results/project4/scenario_multi_arm.pdf')
-        
+
         return results
+
+    # Aliases for convenience
+    @staticmethod
+    def heavy(n_sim=50, T=200):
+        """Alias for heavy_tailed_beta scenario."""
+        return Project4Scenarios.heavy_tailed_beta(n_sim=n_sim, T=T)
+
+    @staticmethod
+    def multi(n_sim=30, T=150):
+        """Alias for multi_arm scenario."""
+        return Project4Scenarios.multi_arm(n_sim=n_sim, T=T)
 
 
 def main():
