@@ -35,7 +35,7 @@ class SimulationStudy:
     - Scenarios with sparse vs dense coefficients
     """
     def __init__(self, n_sim, K, d, T, q, h, tau, err_generator, context_generator, 
-                 context_generator, beta_generator=None, alpha_generator=None,
+                beta_generator=None, alpha_generator=None,
                  beta_low=[0.0, 0.5], beta_high=[1, 1.5], random_seed=None):
         """
         Initialize the simulation study.
@@ -125,6 +125,106 @@ class SimulationStudy:
 
         # Store results
         self.results = None
+
+    def _generate_beta_values(self, beta_low, beta_high):
+        """
+        Generate true beta coefficient values for all arms.
+        
+        Supports three modes:
+        1. None: Default uniform distribution (backward compatible)
+        2. Single generator: Same distribution for all arms
+        3. List of generators: Different distribution per arm
+        
+        Parameters
+        ----------
+        beta_low : list
+            Lower bounds for default uniform generation
+        beta_high : list
+            Upper bounds for default uniform generation
+            
+        Returns
+        -------
+        np.ndarray
+            Beta values of shape (K, d)
+        """
+        if self.beta_generator is None:
+            # Mode 1: Default uniform distribution (backward compatibility)
+            beta1 = UniformGenerator(low=beta_low[0], high=beta_high[0]).generate((self.K//2, self.d), rng=self.rng)
+            beta2 = UniformGenerator(low=beta_low[1], high=beta_high[1]).generate((self.K-self.K//2, self.d), rng=self.rng)
+            return np.vstack([beta1, beta2])
+        
+        elif isinstance(self.beta_generator, list):
+            # Mode 3: List of generators - one per arm
+            if len(self.beta_generator) != self.K:
+                raise ValueError(f"beta_generator list must have length K={self.K}, got {len(self.beta_generator)}")
+            
+            beta_values = []
+            for k in range(self.K):
+                beta_k = self.beta_generator[k].generate(self.d, rng=self.rng)
+                if beta_k.ndim > 1:
+                    beta_k = beta_k.ravel()
+                beta_values.append(beta_k)
+            return np.array(beta_values)
+        
+        else:
+            # Mode 2: Single generator - use for all arms
+            beta_values = []
+            for k in range(self.K):
+                beta_k = self.beta_generator.generate(self.d, rng=self.rng)
+                if beta_k.ndim > 1:
+                    beta_k = beta_k.ravel()
+                beta_values.append(beta_k)
+            return np.array(beta_values)
+    
+    def _generate_alpha_values(self, beta_low, beta_high):
+        """
+        Generate true alpha intercept values for all arms.
+        
+        Supports three modes (same as beta generation):
+        1. None: Default uniform distribution
+        2. Single generator: Same distribution for all arms
+        3. List of generators: Different distribution per arm
+        
+        Parameters
+        ----------
+        beta_low : list
+            Lower bounds for default uniform generation
+        beta_high : list
+            Upper bounds for default uniform generation
+            
+        Returns
+        -------
+        np.ndarray
+            Alpha values of shape (K,)
+        """
+        if self.alpha_generator is None:
+            # Mode 1: Default uniform distribution (backward compatibility)
+            alpha1 = UniformGenerator(low=beta_low[0], high=beta_high[0]).generate(self.K//2, rng=self.rng)
+            alpha2 = UniformGenerator(low=beta_low[0], high=beta_high[0]).generate(self.K-self.K//2, rng=self.rng)
+            return np.concatenate([alpha1, alpha2])
+        
+        elif isinstance(self.alpha_generator, list):
+            # Mode 3: List of generators - one per arm
+            if len(self.alpha_generator) != self.K:
+                raise ValueError(f"alpha_generator list must have length K={self.K}, got {len(self.alpha_generator)}")
+            
+            alpha_values = []
+            for k in range(self.K):
+                alpha_k = self.alpha_generator[k].generate(1, rng=self.rng)
+                if hasattr(alpha_k, '__iter__'):
+                    alpha_k = alpha_k[0]
+                alpha_values.append(alpha_k)
+            return np.array(alpha_values)
+        
+        else:
+            # Mode 2: Single generator - use for all arms
+            alpha_values = []
+            for k in range(self.K):
+                alpha_k = self.alpha_generator.generate(1, rng=self.rng)
+                if hasattr(alpha_k, '__iter__'):
+                    alpha_k = alpha_k[0]
+                alpha_values.append(alpha_k)
+            return np.array(alpha_values)
 
     def run_one_scenario(self):
         """Run one scenario to compute cumulative regret for both bandit algorithms."""
@@ -285,7 +385,24 @@ class SimulationStudy:
         
         # Save metadata if requested
         if save_metadata:
+            import json
             metadata_path = filepath.replace('.pkl', '_metadata.json')
+            
+            # Get generator names
+            if self.beta_generator is None:
+                beta_gen_name = 'Uniform (default)'
+            elif isinstance(self.beta_generator, list):
+                beta_gen_name = [gen.name for gen in self.beta_generator]
+            else:
+                beta_gen_name = self.beta_generator.name
+            
+            if self.alpha_generator is None:
+                alpha_gen_name = 'Uniform (default)'
+            elif isinstance(self.alpha_generator, list):
+                alpha_gen_name = [gen.name for gen in self.alpha_generator]
+            else:
+                alpha_gen_name = self.alpha_generator.name
+            
             metadata = {
                 'n_sim': self.n_sim,
                 'K': self.K,
@@ -297,6 +414,8 @@ class SimulationStudy:
                 'random_seed': self.random_seed,
                 'err_generator': self.err_generator.name,
                 'context_generator': self.context_generator.name,
+                'beta_generator': beta_gen_name,
+                'alpha_generator': alpha_gen_name,
                 'timestamp': datetime.now().isoformat(),
                 'results_shapes': {
                     'cumulated_regret_RiskAware': self.results['cumulated_regret_RiskAware'].shape,
@@ -310,7 +429,7 @@ class SimulationStudy:
                 json.dump(metadata, f, indent=2)
             
             print(f"Metadata saved to: {metadata_path}")
-        
+
         return filepath
     
     @classmethod
@@ -636,21 +755,54 @@ if __name__ == "__main__":
     err_generator = TGenerator(df=2.25, scale=0.7)
     context_generator = TruncatedNormalGenerator(mean=0.0, std=1.0)
 
-    study = SimulationStudy(
+    # Example 1: Default (uniform beta)
+    print("Example 1: Default Uniform Beta")
+    print("-" * 80)
+    study1 = SimulationStudy(
         n_sim=n_sim, K=K, d=d, T=T, q=q, h=h, tau=tau, 
         random_seed=RANDOM_SEED,
         err_generator=err_generator,
         context_generator=context_generator
     )
+    print(f"Beta real values shape: {study1.beta_real_value.shape}")
+    print(f"Beta real values:\n{study1.beta_real_value}")
+    print()
 
-    results = study.run_simulation()
-    study.plot_regret_results(use_ci=True, ci_level=0.95)
-    
-    results_path = study.save_results()
-    study.save_summary_statistics()
+    # Example 2: Gaussian beta with zero mean
+    print("Example 2: Gaussian Beta (mean=0, std=1)")
+    print("-" * 80)
+    beta_gen = NormalGenerator(mean=0, std=1)
+    study2 = SimulationStudy(
+        n_sim=n_sim, K=K, d=d, T=T, q=q, h=h, tau=tau, 
+        random_seed=RANDOM_SEED,
+        err_generator=err_generator,
+        context_generator=context_generator,
+        beta_generator=beta_gen
+    )
+    print(f"Beta real values shape: {study2.beta_real_value.shape}")
+    print(f"Beta real values:\n{study2.beta_real_value}")
+    print()
 
-    # Option 1: Plot all arms together (default)
-    study.plot_beta_error_results(use_ci=True, ci_level=0.95, separate_arms=False)
+    # Example 3: Different distributions per arm
+    print("Example 3: Heterogeneous Beta (different per arm)")
+    print("-" * 80)
+    beta_gens = [
+        NormalGenerator(mean=0, std=1),  # Arm 0: Gaussian
+        UniformGenerator(low=0.5, high=1.5)  # Arm 1: Uniform
+    ]
+    study3 = SimulationStudy(
+        n_sim=n_sim, K=K, d=d, T=T, q=q, h=h, tau=tau, 
+        random_seed=RANDOM_SEED,
+        err_generator=err_generator,
+        context_generator=context_generator,
+        beta_generator=beta_gens
+    )
+    print(f"Beta real values shape: {study3.beta_real_value.shape}")
+    print(f"Beta real values:\n{study3.beta_real_value}")
+    print(f"  Arm 0 (Gaussian): {study3.beta_real_value[0]}")
+    print(f"  Arm 1 (Uniform):  {study3.beta_real_value[1]}")
+    print()
 
-    # Option 2: Plot each arm in separate subplot (what you want!)
-    study.plot_beta_error_results(use_ci=True, ci_level=0.95, separate_arms=True)
+    print("="*80)
+    print("All examples completed successfully!")
+    print("="*80)
