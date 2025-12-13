@@ -1,291 +1,408 @@
-# Makefile for Project 4: Multi-Algorithm Quantile Bandit Comparison
-# ======================================================================
+# Makefile for Project 4: Multi-Algorithm Bandit Comparison
+# =============================================================
+# Quick figure generation for different context/error scenarios
 
-.PHONY: help install test quick lowdim highdim all analyze clean info
+.PHONY: help install test clean info
 
 # Default target
 .DEFAULT_GOAL := help
 
 # Configuration
-PYTHON := python
+PYTHON := python3
 N_SIM := 50
-K := 2
-D := 10
-T := 500
-DF := 2.25
-TAU := 0.5
-SEED := 1010
+T := 200
+QUICK_N_SIM := 5
+QUICK_T := 50
 
-# Colors for output
-RED := \033[0;31m
+# Colors
 GREEN := \033[0;32m
 YELLOW := \033[0;33m
 BLUE := \033[0;34m
-NC := \033[0m  # No Color
+RED := \033[0;31m
+NC := \033[0m
 
 # ======================================================================
 # HELP
 # ======================================================================
 
 help:  ## Show this help message
-	@echo "$(BLUE)================================$(NC)"
-	@echo "$(BLUE) Project 4: Makefile Commands$(NC)"
-	@echo "$(BLUE)================================$(NC)"
+	@echo "$(BLUE)================================================$(NC)"
+	@echo "$(BLUE) Project 4: Multi-Algorithm Bandit Comparison$(NC)"
+	@echo "$(BLUE)================================================$(NC)"
 	@echo ""
-	@echo "$(GREEN)Setup:$(NC)"
-	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / && /Setup:/ {printf "  $(YELLOW)%-20s$(NC) %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+	@echo "$(GREEN)Quick Start:$(NC)"
+	@echo "  $(YELLOW)make quick-test$(NC)      # Test everything works (2 min)"
+	@echo "  $(YELLOW)make scenarios$(NC)       # Run all scenarios (30 min)"
+	@echo "  $(YELLOW)make experiments$(NC)     # Run all experiments (2 hours)"
+	@echo "  $(YELLOW)make all-figures$(NC)     # Generate all figures"
 	@echo ""
-	@echo "$(GREEN)Testing:$(NC)"
-	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / && /Testing:/ {printf "  $(YELLOW)%-20s$(NC) %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+	@echo "$(GREEN)Individual Scenarios:$(NC)"
+	@grep -E '^[a-zA-Z_-]+:.*?## Scenario:' $(MAKEFILE_LIST) | \
+		awk 'BEGIN {FS = ":.*?## "}; {printf "  $(YELLOW)%-20s$(NC) %s\n", $$1, $$2}'
 	@echo ""
-	@echo "$(GREEN)Experiments:$(NC)"
-	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / && /Experiments:/ {printf "  $(YELLOW)%-20s$(NC) %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+	@echo "$(GREEN)Experimental Sweeps:$(NC)"
+	@grep -E '^[a-zA-Z_-]+:.*?## Experiment:' $(MAKEFILE_LIST) | \
+		awk 'BEGIN {FS = ":.*?## "}; {printf "  $(YELLOW)%-20s$(NC) %s\n", $$1, $$2}'
 	@echo ""
-	@echo "$(GREEN)Analysis:$(NC)"
-	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / && /Analysis:/ {printf "  $(YELLOW)%-20s$(NC) %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+	@echo "$(GREEN)Analysis & Figures:$(NC)"
+	@grep -E '^[a-zA-Z_-]+:.*?## Analysis:' $(MAKEFILE_LIST) | \
+		awk 'BEGIN {FS = ":.*?## "}; {printf "  $(YELLOW)%-20s$(NC) %s\n", $$1, $$2}'
 	@echo ""
 	@echo "$(GREEN)Utilities:$(NC)"
-	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / && /Utilities:/ {printf "  $(YELLOW)%-20s$(NC) %s\n", $$1, $$2}' $(MAKEFILE_LIST)
-	@echo ""
-	@echo "$(BLUE)================================$(NC)"
-	@echo ""
-	@echo "Examples:"
-	@echo "  make quick              # Quick test (5 sims, 2 algorithms)"
-	@echo "  make lowdim             # Run all low-dim experiments"
-	@echo "  make highdim            # Run all high-dim experiments"
-	@echo "  make all                # Run complete experimental suite"
-	@echo "  make analyze            # Analyze results and generate report"
+	@grep -E '^[a-zA-Z_-]+:.*?## Util:' $(MAKEFILE_LIST) | \
+		awk 'BEGIN {FS = ":.*?## "}; {printf "  $(YELLOW)%-20s$(NC) %s\n", $$1, $$2}'
 	@echo ""
 
 # ======================================================================
 # SETUP
 # ======================================================================
 
-install:  ## Setup: Install dependencies
+install:  ## Util: Install dependencies
 	@echo "$(GREEN)Installing dependencies...$(NC)"
 	pip install -r requirements.txt
 	@echo "$(GREEN)✓ Dependencies installed$(NC)"
 
-check-setup:  ## Setup: Verify installation
+check-setup:  ## Util: Verify setup
 	@echo "$(GREEN)Checking setup...$(NC)"
-	@$(PYTHON) -c "import numpy, scipy, pandas, matplotlib, quantes; print('✓ Core dependencies OK')"
-	@$(PYTHON) -c "from quantes.linear import high_dim; print('✓ High-dimensional quantes available')" || \
-		echo "$(YELLOW)⚠ High-dimensional quantes not available$(NC)"
-	@echo "$(GREEN)✓ Setup verified$(NC)"
+	@$(PYTHON) -c "import numpy, scipy, pandas, matplotlib, quantes; print('✓ OK')"
 
 # ======================================================================
-# TESTING
+# QUICK TESTING
 # ======================================================================
 
-test:  ## Testing: Test algorithm implementations
-	@echo "$(GREEN)Testing algorithm implementations...$(NC)"
-	@$(PYTHON) project4_methods.py
-	@echo "$(GREEN)✓ Tests passed$(NC)"
-
-quick:  ## Testing: Quick test run (5 sims, 100 rounds)
-	@echo "$(GREEN)Running quick test...$(NC)"
-	@$(PYTHON) project4_experiments.py --mode quick
+quick-test:  ## Util: Quick test (5 sims, 50 rounds)
+	@echo "$(BLUE)=== Quick Test ===$(NC)"
+	@$(PYTHON) project4_main.py --scenario quick
+	@$(PYTHON) project4_analysis.py --scenario default
 	@echo "$(GREEN)✓ Quick test complete$(NC)"
-
-verify:  ## Testing: Verify all components work
-	@echo "$(GREEN)Verifying all components...$(NC)"
-	@$(MAKE) test
-	@$(MAKE) quick
-	@echo "$(GREEN)✓ All components verified$(NC)"
+	@echo "$(YELLOW)Check: results/project4/scenario_default.pdf$(NC)"
 
 # ======================================================================
-# EXPERIMENTS
+# SCENARIOS (Different Beta/Context Generation)
 # ======================================================================
 
-baseline:  ## Experiments: Run baseline comparison (default settings)
-	@echo "$(GREEN)Running baseline experiment...$(NC)"
-	@$(PYTHON) project4_main.py \
-		--n_sim $(N_SIM) \
-		--K $(K) \
-		--d $(D) \
-		--T $(T) \
-		--df $(DF) \
-		--tau $(TAU) \
-		--seed $(SEED)
-	@echo "$(GREEN)✓ Baseline complete$(NC)"
+scenario-default:  ## Scenario: Uniform beta (baseline)
+	@echo "$(GREEN)Running: Default (Uniform Beta)$(NC)"
+	@$(PYTHON) project4_main.py --scenario default \
+		--n_sim $(N_SIM) --T $(T)
 
-lowdim:  ## Experiments: Run all low-dimensional experiments
-	@echo "$(GREEN)Running low-dimensional experiments...$(NC)"
-	@echo "$(YELLOW)This will take ~1-2 hours$(NC)"
-	@$(PYTHON) project4_experiments.py --mode lowdim
-	@echo "$(GREEN)✓ Low-dimensional experiments complete$(NC)"
+scenario-gaussian:  ## Scenario: Gaussian beta (zero-mean)
+	@echo "$(GREEN)Running: Gaussian Beta$(NC)"
+	@$(PYTHON) project4_main.py --scenario gaussian \
+		--n_sim $(N_SIM) --T $(T)
 
-highdim:  ## Experiments: Run all high-dimensional experiments
-	@echo "$(GREEN)Running high-dimensional experiments...$(NC)"
-	@echo "$(YELLOW)This will take ~2-3 hours$(NC)"
-	@$(PYTHON) project4_experiments.py --mode highdim
-	@echo "$(GREEN)✓ High-dimensional experiments complete$(NC)"
+scenario-heterogeneous:  ## Scenario: Different beta per arm
+	@echo "$(GREEN)Running: Heterogeneous Arms$(NC)"
+	@$(PYTHON) project4_main.py --scenario heterogeneous \
+		--n_sim $(N_SIM) --T $(T)
 
-all-experiments:  ## Experiments: Run complete experimental suite
-	@echo "$(GREEN)Running complete experimental suite...$(NC)"
-	@echo "$(RED)WARNING: This will take several hours!$(NC)"
+scenario-sparse:  ## Scenario: Sparse/weak signals
+	@echo "$(GREEN)Running: Sparse Coefficients$(NC)"
+	@$(PYTHON) project4_main.py --scenario sparse \
+		--n_sim $(N_SIM) --T $(T)
+
+scenario-heavy:  ## Scenario: Heavy-tailed beta
+	@echo "$(GREEN)Running: Heavy-Tailed Beta$(NC)"
+	@$(PYTHON) project4_main.py --scenario heavy \
+		--n_sim $(N_SIM) --T $(T)
+
+scenario-multi:  ## Scenario: Multiple arms (K=5)
+	@echo "$(GREEN)Running: Multi-Arm$(NC)"
+	@$(PYTHON) project4_main.py --scenario multi \
+		--n_sim 30 --T 150
+
+scenarios:  ## Run all scenarios
+	@echo "$(BLUE)================================================$(NC)"
+	@echo "$(BLUE) Running All Scenarios$(NC)"
+	@echo "$(BLUE)================================================$(NC)"
+	@echo "$(YELLOW)Estimated time: 30-40 minutes$(NC)"
+	@echo ""
+	@$(MAKE) scenario-default
+	@$(MAKE) scenario-gaussian
+	@$(MAKE) scenario-heterogeneous
+	@$(MAKE) scenario-sparse
+	@$(MAKE) scenario-heavy
+	@$(MAKE) scenario-multi
+	@echo ""
+	@echo "$(GREEN)✓ All scenarios complete$(NC)"
+	@echo "$(YELLOW)Results in: results/project4/scenario_*.pkl$(NC)"
+
+# ======================================================================
+# EXPERIMENTAL SWEEPS
+# ======================================================================
+
+exp-df-sweep:  ## Experiment: Vary tail heaviness (df)
+	@echo "$(GREEN)Running: DF Sweep$(NC)"
+	@$(PYTHON) project4_experiments.py --experiment df_sweep \
+		--n_sim $(N_SIM) --T $(T)
+
+exp-tau-sweep:  ## Experiment: Vary quantile level (τ)
+	@echo "$(GREEN)Running: Tau Sweep$(NC)"
+	@$(PYTHON) project4_experiments.py --experiment tau_sweep \
+		--n_sim $(N_SIM) --T $(T)
+
+exp-dim-sweep:  ## Experiment: Vary dimension (d)
+	@echo "$(GREEN)Running: Dimension Sweep$(NC)"
+	@$(PYTHON) project4_experiments.py --experiment dimension_sweep \
+		--n_sim 20 --T 100
+
+exp-arms-sweep:  ## Experiment: Vary number of arms (K)
+	@echo "$(GREEN)Running: Arms Sweep$(NC)"
+	@$(PYTHON) project4_experiments.py --experiment arms_sweep \
+		--n_sim 20 --T 100
+
+exp-beta-comparison:  ## Experiment: Compare beta strategies
+	@echo "$(GREEN)Running: Beta Strategy Comparison$(NC)"
+	@$(PYTHON) project4_experiments.py --experiment beta_comparison \
+		--n_sim $(N_SIM) --T $(T)
+
+experiments:  ## Run all experimental sweeps
+	@echo "$(BLUE)================================================$(NC)"
+	@echo "$(BLUE) Running All Experiments$(NC)"
+	@echo "$(BLUE)================================================$(NC)"
+	@echo "$(RED)WARNING: This will take 2-3 hours!$(NC)"
 	@echo "$(YELLOW)Press Ctrl+C within 5 seconds to cancel...$(NC)"
 	@sleep 5
-	@$(PYTHON) project4_experiments.py --mode all
+	@$(MAKE) exp-df-sweep
+	@$(MAKE) exp-tau-sweep
+	@$(MAKE) exp-dim-sweep
+	@$(MAKE) exp-arms-sweep
+	@$(MAKE) exp-beta-comparison
+	@echo ""
 	@echo "$(GREEN)✓ All experiments complete$(NC)"
 
 # ======================================================================
-# CUSTOM EXPERIMENTS
+# ANALYSIS & FIGURES
 # ======================================================================
 
-custom:  ## Experiments: Run custom experiment (use make custom N_SIM=... K=... etc)
-	@echo "$(GREEN)Running custom experiment...$(NC)"
-	@$(PYTHON) project4_main.py \
-		--n_sim $(N_SIM) \
-		--K $(K) \
-		--d $(D) \
-		--T $(T) \
-		--df $(DF) \
-		--tau $(TAU) \
-		--seed $(SEED) \
-		$(if $(HIGH_DIM),--high_dim)
-	@echo "$(GREEN)✓ Custom experiment complete$(NC)"
+analyze-scenario:  ## Analysis: Analyze one scenario (use SCENARIO=name)
+	@echo "$(GREEN)Analyzing: $(SCENARIO)$(NC)"
+	@$(PYTHON) project4_analysis.py --scenario $(SCENARIO)
+	@echo "$(GREEN)✓ Analysis complete$(NC)"
+	@echo "$(YELLOW)Figures: results/project4/analysis/*_$(SCENARIO).pdf$(NC)"
 
-heavy-tails:  ## Experiments: Compare with very heavy tails (df=1.5)
-	@$(MAKE) custom DF=1.5 T=500
+analyze-experiment:  ## Analysis: Analyze one experiment (use EXP=name)
+	@echo "$(GREEN)Analyzing: $(EXP)$(NC)"
+	@$(PYTHON) project4_analysis.py --experiment $(EXP)
+	@echo "$(GREEN)✓ Analysis complete$(NC)"
 
-multiple-arms:  ## Experiments: Test with more arms (K=5)
-	@$(MAKE) custom K=5 T=1000
-
-high-dimensional:  ## Experiments: Test high-dimensional (d=100)
-	@$(MAKE) custom D=100 HIGH_DIM=1 T=500
-
-# ======================================================================
-# ANALYSIS
-# ======================================================================
-
-analyze:  ## Analysis: Analyze all results and generate report
-	@echo "$(GREEN)Analyzing results...$(NC)"
+analyze-all:  ## Analysis: Analyze all results
+	@echo "$(GREEN)Analyzing all results...$(NC)"
 	@$(PYTHON) project4_analysis.py
 	@echo "$(GREEN)✓ Analysis complete$(NC)"
-	@echo ""
-	@echo "$(BLUE)Results available in:$(NC)"
-	@echo "  - results/project4/summary/"
-	@echo "  - results/project4/figures/"
-	@echo ""
 
-stats:  ## Analysis: Show summary statistics
-	@echo "$(GREEN)Summary Statistics:$(NC)"
-	@if [ -f results/project4/summary/summary_statistics.csv ]; then \
-		head -20 results/project4/summary/summary_statistics.csv | column -t -s,; \
-	else \
-		echo "$(YELLOW)No results found. Run experiments first.$(NC)"; \
-	fi
+# Individual scenario analysis targets
+analyze-default:  ## Analysis: Analyze default scenario
+	@$(MAKE) analyze-scenario SCENARIO=default
 
-figures:  ## Analysis: Regenerate all figures
-	@echo "$(GREEN)Generating figures...$(NC)"
-	@$(PYTHON) project4_analysis.py --results_dir results/project4
-	@echo "$(GREEN)✓ Figures generated$(NC)"
+analyze-gaussian:  ## Analysis: Analyze gaussian scenario
+	@$(MAKE) analyze-scenario SCENARIO=gaussian
 
-report:  ## Analysis: Generate comprehensive report
-	@echo "$(GREEN)Generating comprehensive report...$(NC)"
-	@$(MAKE) analyze
-	@echo "$(GREEN)✓ Report generated$(NC)"
+analyze-heterogeneous:  ## Analysis: Analyze heterogeneous scenario
+	@$(MAKE) analyze-scenario SCENARIO=heterogeneous
+
+analyze-sparse:  ## Analysis: Analyze sparse scenario
+	@$(MAKE) analyze-scenario SCENARIO=sparse
+
+analyze-heavy:  ## Analysis: Analyze heavy-tailed scenario
+	@$(MAKE) analyze-scenario SCENARIO=heavy
+
+analyze-multi:  ## Analysis: Analyze multi-arm scenario
+	@$(MAKE) analyze-scenario SCENARIO=multi
+
+# Individual experiment analysis targets
+analyze-df:  ## Analysis: Analyze df sweep
+	@$(MAKE) analyze-experiment EXP=df_sweep
+
+analyze-tau:  ## Analysis: Analyze tau sweep
+	@$(MAKE) analyze-experiment EXP=tau_sweep
+
+analyze-dim:  ## Analysis: Analyze dimension sweep
+	@$(MAKE) analyze-experiment EXP=dim_sweep
+
+analyze-arms:  ## Analysis: Analyze arms sweep
+	@$(MAKE) analyze-experiment EXP=arms_sweep
+
+analyze-beta:  ## Analysis: Analyze beta comparison
+	@$(MAKE) analyze-experiment EXP=beta_strategy
+
+all-figures:  ## Analysis: Generate all figures
+	@echo "$(BLUE)================================================$(NC)"
+	@echo "$(BLUE) Generating All Figures$(NC)"
+	@echo "$(BLUE)================================================$(NC)"
+	@$(MAKE) analyze-all
 	@echo ""
-	@echo "$(BLUE)Report components:$(NC)"
-	@ls -lh results/project4/summary/
+	@echo "$(GREEN)✓ All figures generated$(NC)"
 	@echo ""
+	@echo "$(BLUE)Available figures:$(NC)"
+	@ls -lh results/project4/analysis/*.pdf 2>/dev/null || echo "No figures yet"
 
 # ======================================================================
-# WORKFLOW TARGETS
+# COMPLETE WORKFLOWS
 # ======================================================================
 
-workflow-test:  ## Complete workflow for testing
-	@echo "$(BLUE)================================$(NC)"
-	@echo "$(BLUE) Test Workflow$(NC)"
-	@echo "$(BLUE)================================$(NC)"
+workflow-quick:  ## Complete quick workflow (test)
+	@echo "$(BLUE)================================================$(NC)"
+	@echo "$(BLUE) Quick Workflow (Test)$(NC)"
+	@echo "$(BLUE)================================================$(NC)"
 	@$(MAKE) check-setup
-	@$(MAKE) test
-	@$(MAKE) quick
-	@$(MAKE) analyze
-	@echo "$(GREEN)✓ Test workflow complete$(NC)"
+	@$(MAKE) quick-test
+	@echo "$(GREEN)✓ Quick workflow complete$(NC)"
 
-workflow-basic:  ## Complete workflow with baseline experiments
-	@echo "$(BLUE)================================$(NC)"
-	@echo "$(BLUE) Basic Workflow$(NC)"
-	@echo "$(BLUE)================================$(NC)"
+workflow-scenarios:  ## Complete workflow: all scenarios
+	@echo "$(BLUE)================================================$(NC)"
+	@echo "$(BLUE) Scenarios Workflow$(NC)"
+	@echo "$(BLUE)================================================$(NC)"
 	@$(MAKE) check-setup
-	@$(MAKE) test
-	@$(MAKE) baseline
-	@$(MAKE) analyze
-	@echo "$(GREEN)✓ Basic workflow complete$(NC)"
+	@$(MAKE) scenarios
+	@$(MAKE) analyze-all
+	@echo ""
+	@echo "$(GREEN)✓ Scenarios workflow complete$(NC)"
+	@echo "$(YELLOW)Results in: results/project4/$(NC)"
 
-workflow-full:  ## Complete workflow with all experiments
-	@echo "$(BLUE)================================$(NC)"
-	@echo "$(BLUE) Full Workflow$(NC)"
-	@echo "$(BLUE)================================$(NC)"
-	@echo "$(RED)WARNING: This will take several hours!$(NC)"
+workflow-experiments:  ## Complete workflow: all experiments
+	@echo "$(BLUE)================================================$(NC)"
+	@echo "$(BLUE) Experiments Workflow$(NC)"
+	@echo "$(BLUE)================================================$(NC)"
+	@echo "$(RED)WARNING: 2-3 hours runtime!$(NC)"
+	@$(MAKE) check-setup
+	@$(MAKE) experiments
+	@$(MAKE) analyze-all
+	@echo ""
+	@echo "$(GREEN)✓ Experiments workflow complete$(NC)"
+
+workflow-full:  ## Complete workflow: everything
+	@echo "$(BLUE)================================================$(NC)"
+	@echo "$(BLUE) Full Workflow (Scenarios + Experiments)$(NC)"
+	@echo "$(BLUE)================================================$(NC)"
+	@echo "$(RED)WARNING: 3-4 hours runtime!$(NC)"
 	@echo "$(YELLOW)Press Ctrl+C within 10 seconds to cancel...$(NC)"
 	@sleep 10
-	@$(MAKE) check-setup
-	@$(MAKE) test
-	@$(MAKE) lowdim
-	@$(MAKE) highdim
-	@$(MAKE) analyze
-	@$(MAKE) report
+	@$(MAKE) scenarios
+	@$(MAKE) experiments
+	@$(MAKE) analyze-all
+	@$(MAKE) summary-report
+	@echo ""
 	@echo "$(GREEN)✓ Full workflow complete$(NC)"
+
+# ======================================================================
+# REPORTING
+# ======================================================================
+
+summary-report:  ## Generate summary report
+	@echo "$(BLUE)================================================$(NC)"
+	@echo "$(BLUE) Summary Report$(NC)"
+	@echo "$(BLUE)================================================$(NC)"
+	@echo ""
+	@echo "$(GREEN)Scenario Results:$(NC)"
+	@for f in results/project4/analysis/summary_*.csv; do \
+		if [ -f "$$f" ]; then \
+			echo ""; \
+			echo "$(YELLOW)$$(basename $$f)$(NC)"; \
+			head -5 "$$f" | column -t -s, ; \
+		fi \
+	done
+	@echo ""
+	@echo "$(GREEN)Generated Figures:$(NC)"
+	@ls -1 results/project4/analysis/*.pdf 2>/dev/null | wc -l | \
+		xargs echo "  Total PDF files:"
+	@echo ""
+	@echo "$(GREEN)Experimental Data:$(NC)"
+	@ls -1 results/project4/*.pkl 2>/dev/null | wc -l | \
+		xargs echo "  Total result files:"
+	@echo ""
+
+show-results:  ## Show summary of results
+	@echo "$(GREEN)Summary Statistics:$(NC)"
+	@if [ -f results/project4/analysis/summary_all_scenarios.csv ]; then \
+		head -20 results/project4/analysis/summary_all_scenarios.csv | column -t -s,; \
+	else \
+		echo "$(YELLOW)No combined results yet. Run 'make analyze-all'$(NC)"; \
+	fi
+
+list-figures:  ## List all generated figures
+	@echo "$(GREEN)Generated Figures:$(NC)"
+	@ls -lh results/project4/analysis/*.pdf 2>/dev/null || \
+		echo "$(YELLOW)No figures yet. Run 'make all-figures'$(NC)"
+	@ls -lh results/project4/scenario_*.pdf 2>/dev/null || true
+
+# ======================================================================
+# CUSTOM RUNS
+# ======================================================================
+
+custom-scenario:  ## Run custom scenario (set BETA=gaussian/uniform/heavy/sparse)
+	@echo "$(GREEN)Running custom scenario: BETA=$(BETA)$(NC)"
+	@$(PYTHON) project4_main.py --scenario $(BETA) \
+		--n_sim $(N_SIM) --T $(T)
+	@$(PYTHON) project4_analysis.py --scenario $(BETA)
+	@echo "$(GREEN)✓ Custom scenario complete$(NC)"
+
+custom-quick:  ## Quick custom run (use: make custom-quick BETA=gaussian N_SIM=10 T=100)
+	@$(PYTHON) project4_main.py --scenario $(BETA) \
+		--n_sim $(or $(N_SIM),10) --T $(or $(T),100)
 
 # ======================================================================
 # UTILITIES
 # ======================================================================
 
-info:  ## Utilities: Show project information
-	@echo "$(BLUE)================================$(NC)"
+info:  ## Util: Show project information
+	@echo "$(BLUE)================================================$(NC)"
 	@echo "$(BLUE) Project 4 Information$(NC)"
-	@echo "$(BLUE)================================$(NC)"
+	@echo "$(BLUE)================================================$(NC)"
 	@echo ""
-	@echo "$(GREEN)Algorithms:$(NC)"
-	@echo "  - Forced Sampling"
-	@echo "  - LinUCB (quantile)"
-	@echo "  - Epsilon-Greedy (quantile)"
-	@echo "  - Thompson Sampling (quantile)"
+	@echo "$(GREEN)Algorithms Implemented:$(NC)"
+	@echo "  • Forced Sampling (baseline from Projects 2-3)"
+	@echo "  • LinUCB (with quantile regression)"
+	@echo "  • Epsilon-Greedy (with quantile regression)"
+	@echo "  • Thompson Sampling (with quantile regression)"
+	@echo ""
+	@echo "$(GREEN)Scenarios Available:$(NC)"
+	@echo "  • default         - Uniform beta (baseline)"
+	@echo "  • gaussian        - Gaussian beta (zero-mean)"
+	@echo "  • heterogeneous   - Different beta per arm"
+	@echo "  • sparse          - Weak/sparse signals"
+	@echo "  • heavy           - Heavy-tailed beta"
+	@echo "  • multi           - Multiple arms (K=5)"
+	@echo ""
+	@echo "$(GREEN)Experimental Sweeps:$(NC)"
+	@echo "  • df_sweep        - Vary tail heaviness"
+	@echo "  • tau_sweep       - Vary quantile level"
+	@echo "  • dimension_sweep - Vary context dimension"
+	@echo "  • arms_sweep      - Vary number of arms"
+	@echo "  • beta_comparison - Compare beta strategies"
 	@echo ""
 	@echo "$(GREEN)Current Configuration:$(NC)"
 	@echo "  N_SIM = $(N_SIM)"
-	@echo "  K = $(K) arms"
-	@echo "  D = $(D) dimensions"
-	@echo "  T = $(T) rounds"
-	@echo "  DF = $(DF) (tail heaviness)"
-	@echo "  TAU = $(TAU) (quantile level)"
-	@echo "  SEED = $(SEED)"
+	@echo "  T = $(T)"
 	@echo ""
+
+tree:  ## Util: Show directory structure
 	@echo "$(GREEN)Directory Structure:$(NC)"
-	@tree -L 2 results/project4 2>/dev/null || ls -R results/project4
-	@echo ""
+	@tree -L 2 results/project4 2>/dev/null || ls -R results/project4 2>/dev/null || \
+		echo "$(YELLOW)No results directory yet$(NC)"
 
-list-results:  ## Utilities: List available results
-	@echo "$(GREEN)Available Results:$(NC)"
-	@ls -lh results/project4/data/*.pkl 2>/dev/null | wc -l | xargs echo "  Experiment files:"
-	@ls -lh results/project4/figures/*.pdf 2>/dev/null | wc -l | xargs echo "  Figure files:"
-	@echo ""
-
-clean-results:  ## Utilities: Clean result files (keeps code)
+clean-results:  ## Util: Clean result files
 	@echo "$(YELLOW)Cleaning results...$(NC)"
-	@rm -rf results/project4/data/*.pkl
-	@rm -rf results/project4/figures/*.pdf
-	@rm -rf results/project4/summary/*
+	@rm -rf results/project4/*.pkl
+	@rm -rf results/project4/analysis/*.pdf
+	@rm -rf results/project4/analysis/*.csv
+	@rm -rf results/project4/experiments/*.pkl
+	@rm -rf results/project4/experiments/*.csv
 	@echo "$(GREEN)✓ Results cleaned$(NC)"
 
-clean-all:  ## Utilities: Clean everything (results + cache)
-	@echo "$(YELLOW)Cleaning everything...$(NC)"
+clean-all:  ## Util: Clean everything (results + cache)
 	@$(MAKE) clean-results
 	@find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 	@find . -type f -name "*.pyc" -delete 2>/dev/null || true
 	@rm -rf .pytest_cache
 	@echo "$(GREEN)✓ Everything cleaned$(NC)"
 
-backup:  ## Utilities: Backup results to timestamped folder
+backup:  ## Util: Backup results
 	@echo "$(GREEN)Creating backup...$(NC)"
 	@mkdir -p backups
-	@tar -czf backups/project4_backup_$(shell date +%Y%m%d_%H%M%S).tar.gz \
+	@tar -czf backups/project4_$(shell date +%Y%m%d_%H%M%S).tar.gz \
 		results/project4 \
-		project4_*.py \
-		PROJECT4_README.md
+		project4_*.py
 	@echo "$(GREEN)✓ Backup created in backups/$(NC)"
 	@ls -lh backups/ | tail -1
 
@@ -293,43 +410,93 @@ backup:  ## Utilities: Backup results to timestamped folder
 # DEVELOPMENT
 # ======================================================================
 
-dev-test:  ## Development: Quick test for development
-	@$(MAKE) quick N_SIM=3 T=50
+dev-test:  ## Development: Minimal test
+	@$(PYTHON) project4_main.py --scenario quick
 
-dev-profile:  ## Development: Profile algorithm performance
-	@echo "$(GREEN)Profiling algorithms...$(NC)"
+dev-profile:  ## Development: Profile performance
 	@$(PYTHON) -m cProfile -o results/project4_profile.prof \
-		project4_main.py --n_sim 5 --T 100
-	@echo "$(GREEN)Profile saved to: results/project4_profile.prof$(NC)"
-	@echo "$(YELLOW)View with: python -m pstats results/project4_profile.prof$(NC)"
-
-dev-debug:  ## Development: Run with detailed debug output
-	@$(PYTHON) -u project4_main.py \
-		--n_sim 2 \
-		--T 50 \
-		--K 2 \
-		--d 5
+		project4_main.py --scenario default --n_sim 5 --T 50
+	@echo "$(GREEN)Profile saved: results/project4_profile.prof$(NC)"
+	@echo "$(YELLOW)View: python -m pstats results/project4_profile.prof$(NC)"
 
 # ======================================================================
-# DOCUMENTATION
+# PAPER/PRESENTATION FIGURES
 # ======================================================================
 
-docs:  ## Documentation: Generate documentation
-	@echo "$(GREEN)Documentation available in:$(NC)"
-	@echo "  - PROJECT4_README.md"
-	@echo "  - docs/PROJECT4_DESIGN.md"
-	@echo "  - docs/PROJECT4_THEORY.md"
-	@echo ""
+paper-figures:  ## Generate high-quality figures for paper
+	@echo "$(GREEN)Generating paper-quality figures...$(NC)"
+	@$(MAKE) scenarios N_SIM=100 T=500
+	@$(MAKE) analyze-all
+	@echo "$(GREEN)✓ Paper figures ready$(NC)"
+	@echo "$(YELLOW)High-res PDFs in: results/project4/analysis/$(NC)"
 
-view-readme:  ## Documentation: View README
-	@cat PROJECT4_README.md | less
+presentation-figures:  ## Generate figures for presentation
+	@echo "$(GREEN)Generating presentation figures...$(NC)"
+	@$(MAKE) scenario-default N_SIM=50 T=200
+	@$(MAKE) scenario-gaussian N_SIM=50 T=200
+	@$(MAKE) scenario-heterogeneous N_SIM=50 T=200
+	@$(MAKE) analyze-default
+	@$(MAKE) analyze-gaussian
+	@$(MAKE) analyze-heterogeneous
+	@echo "$(GREEN)✓ Presentation figures ready$(NC)"
 
 # ======================================================================
-# END
+# SPECIAL COMBINATIONS
 # ======================================================================
 
-.PHONY: help install check-setup test quick verify baseline lowdim highdim \
-        all-experiments custom heavy-tails multiple-arms high-dimensional \
-        analyze stats figures report workflow-test workflow-basic workflow-full \
-        info list-results clean-results clean-all backup dev-test dev-profile \
-        dev-debug docs view-readme
+compare-contexts:  ## Compare different context generators
+	@echo "$(GREEN)Comparing context generators...$(NC)"
+	@$(MAKE) scenario-default
+	@$(MAKE) scenario-gaussian
+	@$(MAKE) analyze-default
+	@$(MAKE) analyze-gaussian
+	@echo "$(GREEN)✓ Context comparison complete$(NC)"
+
+compare-errors:  ## Compare different error distributions
+	@echo "$(GREEN)Comparing error distributions...$(NC)"
+	@$(MAKE) exp-df-sweep
+	@$(MAKE) analyze-df
+	@echo "$(GREEN)✓ Error comparison complete$(NC)"
+
+compare-beta:  ## Compare different beta distributions
+	@echo "$(GREEN)Comparing beta distributions...$(NC)"
+	@$(MAKE) scenario-default
+	@$(MAKE) scenario-gaussian
+	@$(MAKE) scenario-sparse
+	@$(MAKE) scenario-heavy
+	@$(MAKE) analyze-all
+	@echo "$(GREEN)✓ Beta comparison complete$(NC)"
+
+# ======================================================================
+# REPRODUCIBILITY
+# ======================================================================
+
+reproduce-all:  ## Reproduce all results (with fixed seed)
+	@echo "$(BLUE)================================================$(NC)"
+	@echo "$(BLUE) Reproducing All Results (Fixed Seed=42)$(NC)"
+	@echo "$(BLUE)================================================$(NC)"
+	@$(MAKE) clean-results
+	@$(MAKE) workflow-full
+	@echo "$(GREEN)✓ Reproducible results generated$(NC)"
+
+# ======================================================================
+# End
+# ======================================================================
+
+.PHONY: all help install check-setup quick-test \
+	scenario-default scenario-gaussian scenario-heterogeneous \
+	scenario-sparse scenario-heavy scenario-multi scenarios \
+	exp-df-sweep exp-tau-sweep exp-dim-sweep exp-arms-sweep \
+	exp-beta-comparison experiments \
+	analyze-scenario analyze-experiment analyze-all all-figures \
+	analyze-default analyze-gaussian analyze-heterogeneous \
+	analyze-sparse analyze-heavy analyze-multi \
+	analyze-df analyze-tau analyze-dim analyze-arms analyze-beta \
+	workflow-quick workflow-scenarios workflow-experiments workflow-full \
+	summary-report show-results list-figures \
+	custom-scenario custom-quick \
+	info tree clean-results clean-all backup \
+	dev-test dev-profile \
+	paper-figures presentation-figures \
+	compare-contexts compare-errors compare-beta \
+	reproduce-all
