@@ -490,14 +490,19 @@ Examples:
     
     if args.experiment == 'all':
         print("\nRunning ALL experiments (this will take a LONG time)...\n")
-        
+
         experiments.df_sweep(n_sim=n_sim, T=T)
         experiments.tau_sweep(n_sim=n_sim, T=T)
         experiments.dimension_sweep(n_sim=20, T=100)
         experiments.arm_count_sweep(n_sim=20, T=100)
         experiments.beta_generation_comparison(n_sim=n_sim, T=T)
-        
+
         print("\n✓ ALL EXPERIMENTS COMPLETE")
+    elif args.experiment == 'quick':
+        # Quick test - run df_sweep with reduced parameters
+        print("\nRunning quick df_sweep test...\n")
+        experiments.df_sweep(n_sim=n_sim, T=T)
+        print("\n✓ QUICK TEST COMPLETE")
     else:
         exp_map = {
             'df_sweep': experiments.df_sweep,
@@ -506,7 +511,7 @@ Examples:
             'arms_sweep': experiments.arm_count_sweep,
             'beta_comparison': experiments.beta_generation_comparison
         }
-        
+
         exp_map[args.experiment](n_sim=n_sim, T=T)
     
     elapsed = time.time() - start_time
