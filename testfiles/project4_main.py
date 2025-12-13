@@ -375,6 +375,10 @@ Scenarios test different research questions:
         print("\nResults saved to results/project4/")
         print("Run 'python project4_analysis.py' to analyze all results.")
         
+    elif args.scenario == 'quick':
+        # Quick test mode - run default scenario with reduced parameters
+        scenario_func = getattr(scenarios, 'default')
+        results = scenario_func(n_sim=n_sim, T=T)
     else:
         # Run single scenario
         scenario_func = getattr(scenarios, args.scenario.replace('-', '_'))
