@@ -63,6 +63,7 @@ open results/project4/scenario_default.pdf
 ├── README.md                      # This documentation file
 ├── requirements.txt               # Python dependencies
 ├── .gitignore                     # Git ignore rules
+├── report-Xie                     # Project report
 │
 ├── src/                           # Core modules from Projects 2-3
 │   ├── __init__.py
@@ -70,7 +71,13 @@ open results/project4/scenario_default.pdf
 │   ├── methods.py                 # Base bandit algorithms (RiskAware, OLS)
 │   ├── simulation.py              # SimulationStudy base class
 │   ├── numerical_stability.py     # Numerical stability utilities
-│   └── ...
+│   ├── main.py                    # Legacy main from Projects 2-3
+│   ├── analyze_results.py
+│   ├── create_performance_plots.py
+│   ├── examples_flexible_generation.py
+│   ├── parallel_simulation.py
+│   ├── profile_simulation.py
+│   └── tests.py
 │
 ├── project4files/                 # Project 4 implementation
 │   ├── Makefile                   # Build automation & workflows
@@ -80,20 +87,30 @@ open results/project4/scenario_default.pdf
 │   ├── project4_experiments.py    # Experimental sweeps (df, tau, d, K)
 │   ├── project4_analysis.py       # Analysis and visualization
 │   ├── project4_demo.py           # Interactive demonstration script
+│   ├── generate_report_results.py # Report results extraction script
 │   ├── generators.py              # Data generators (local copy)
 │   ├── numerical_stability.py     # Stability utilities (local copy)
 │   ├── presentation_plots.py      # Presentation figure generation
+│   ├── report_summary.txt         # Auto-generated summary
 │   │
-│   └── results/project4/          # Output directory
-│       ├── scenario_*.pkl         # Scenario raw data
-│       ├── scenario_*.pdf         # Scenario comparison plots
-│       ├── experiments/           # Experimental sweep results
-│       │   ├── *_sweep_*.pkl      # Sweep raw data
-│       │   └── *_summary.csv      # Sweep summaries
-│       └── analysis/              # Analysis outputs
-│           ├── summary_*.csv      # Summary statistics
-│           ├── regret_*.pdf       # Regret plots
-│           └── beta_error_*.pdf   # Beta error plots
+│   └── results/                   # Output directory
+│       ├── project4/              # Main project 4 results
+│       │   ├── scenario_*.pkl     # Scenario raw data (6 scenarios)
+│       │   ├── scenario_*.pdf     # Scenario comparison plots
+│       │   ├── data/              # Experimental data files
+│       │   ├── figures/           # Per-scenario/experiment figures
+│       │   ├── experiments/       # Experimental sweep results
+│       │   │   ├── df_sweep_*.pkl
+│       │   │   ├── tau_sweep_*.pkl
+│       │   │   ├── dim_sweep_*.pkl
+│       │   │   ├── arms_sweep_*.pkl
+│       │   │   └── *_summary.csv
+│       │   └── analysis/          # Cross-scenario analysis
+│       │       ├── summary_*.csv
+│       │       └── *.pdf
+│       ├── project4_test/         # Quick test results
+│       ├── figures/               # Legacy figures
+│       └── *.pkl, *.json          # Legacy result files
 │
 └── venv/                          # Python virtual environment
 ```
