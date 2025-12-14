@@ -81,12 +81,13 @@ open results/project4/scenario_default.pdf
 │
 ├── project4files/                 # Project 4 implementation
 │   ├── Makefile                   # Build automation & workflows
+│   ├── demo_quickstart.py         # Quick start tutorial (recommended)
+│   ├── demo_interactive.py        # Interactive exploration demo
 │   ├── project4_main.py           # Main execution (scenarios)
 │   ├── project4_simulation.py     # Project4Simulation class (4 algorithms)
 │   ├── project4_methods.py        # Algorithm implementations
 │   ├── project4_experiments.py    # Experimental sweeps (df, tau, d, K)
 │   ├── project4_analysis.py       # Analysis and visualization
-│   ├── project4_demo.py           # Interactive demonstration script
 │   ├── generate_report_results.py # Report results extraction script
 │   ├── generators.py              # Data generators (local copy)
 │   ├── numerical_stability.py     # Stability utilities (local copy)
@@ -127,47 +128,51 @@ make quick-test              # Run quick test
 
 ---
 
-## Interactive Demo
+## Quick Start Demo (⭐ Recommended for Getting Started)
 
-For a hands-on introduction to the project, run the interactive demonstration:
+**Runtime:** 5-10 minutes | **Setup:** Minimal | **Demonstrates:** Main functionality
+
+This tutorial demo shows how to use the framework step-by-step:
 
 ```bash
 cd project4files
-python project4_demo.py              # Interactive menu
+python demo_quickstart.py
 ```
 
-The demo provides several options:
+**What it demonstrates:**
+1. How to set up a simulation with multiple algorithms
+2. How to configure beta/error distributions
+3. How to run the comparison and analyze results
+4. How to create visualizations
+5. How to adapt the code for your own research
 
-### 1. Quick Demo (5 sims, 2 algorithms, ~10 seconds)
+**Output:**
+- Interactive tutorial with explanations at each step
+- Results table comparing all 4 algorithms
+- Winner analysis with performance metrics
+- Two plots saved as `demo_results.pdf` (regret + estimation error)
+
+**Configuration:**
+- 15 replications, 100 time steps
+- 4 algorithms: Forced Sampling, LinUCB, Epsilon-Greedy, Thompson Sampling
+- Gaussian coefficients with heavy-tailed errors
+
+---
+
+## Interactive Demo (For Exploration)
+
+For flexible experimentation with different configurations:
+
 ```bash
-python project4_demo.py --quick
+cd project4files
+python demo_interactive.py              # Interactive menu
 ```
-Compares Forced Sampling vs Thompson Sampling with minimal configuration.
 
-### 2. All Algorithms Demo (10 sims, 4 algorithms, ~30 seconds)
-```bash
-python project4_demo.py --all
-```
-Compares all 4 algorithms and shows a winner analysis.
-
-### 3. Scenario Comparison Demo (~45 seconds)
-```bash
-python project4_demo.py --scenarios
-```
-Shows Thompson Sampling performance across Uniform, Gaussian, and Sparse beta distributions.
-
-### 4. Custom Demo
-Select option 4 in interactive mode to specify your own:
-- Number of simulations
-- Time horizon
-- Number of arms
-- Context dimension
-- Beta distribution type
-
-**Demo Output:**
-- Summary statistics table
-- Comparison plots (saved as PDF)
-- Key observations and insights
+**Options include:**
+- Quick Demo (5 sims, 2 algorithms, ~10 seconds)
+- All Algorithms Demo (10 sims, 4 algorithms, ~30 seconds)
+- Scenario Comparison Demo (~45 seconds)
+- Custom Demo (specify your own parameters)
 
 ---
 
