@@ -59,12 +59,21 @@ help:  ## Show this help message
 
 install:  ## Util: Install dependencies
 	@echo "$(GREEN)Installing dependencies...$(NC)"
-	pip install -r requirements.txt
+	pip install -r ../requirements.txt
 	@echo "$(GREEN)✓ Dependencies installed$(NC)"
 
 check-setup:  ## Util: Verify setup
 	@echo "$(GREEN)Checking setup...$(NC)"
 	@$(PYTHON) -c "import numpy, scipy, pandas, matplotlib, quantes; print('✓ OK')"
+
+verify:  ## Util: Full verification of all components
+	@echo "$(BLUE)================================================$(NC)"
+	@echo "$(BLUE) Full Verification$(NC)"
+	@echo "$(BLUE)================================================$(NC)"
+	@$(MAKE) check-setup
+	@$(MAKE) quick-test
+	@echo ""
+	@echo "$(GREEN)✓ All components verified$(NC)"
 
 # ======================================================================
 # QUICK TESTING
@@ -483,7 +492,7 @@ reproduce-all:  ## Reproduce all results (with fixed seed)
 # End
 # ======================================================================
 
-.PHONY: all help install check-setup quick-test \
+.PHONY: all help install check-setup verify quick-test \
 	scenario-default scenario-gaussian scenario-heterogeneous \
 	scenario-sparse scenario-heavy scenario-multi scenarios \
 	exp-df-sweep exp-tau-sweep exp-dim-sweep exp-arms-sweep \
