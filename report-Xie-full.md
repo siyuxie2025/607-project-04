@@ -279,9 +279,9 @@ All results based on **5 simulations, 50 rounds, K=2 arms, d=10 dimensions** (qu
 
 **Figure 1: Default Scenario Comparison**
 
-![Default Scenario Results](results/project4/scenario_default.pdf)
+![Default Scenario Results](project4files/results/project4/scenario_default.png)
 
-Location: `project4files/results/project4/scenario_default.pdf`
+Location: `project4files/results/project4/scenario_default.png`
 
 This 4-panel figure shows:
 - **Top Left:** Cumulative regret over time (with confidence bands)
@@ -312,7 +312,7 @@ This 4-panel figure shows:
 
 
 **Why Epsilon-Greedy wins:**
-- Simple ε-greedy with decay (ε = 1/√t) matches uniform coefficient structure
+- Simple epsilon-greedy with decay ($\epsilon = 1/\sqrt{t}$) matches uniform coefficient structure
 - Well-separated arm parameters - easy estimation and decision making
 - Random exploration efficient when arms have similar ranges
 - Minimal overhead - fastest convergence
@@ -328,7 +328,7 @@ This 4-panel figure shows:
 
 ### Scenario 2: Gaussian Beta (Zero-Mean) - LinUCB Wins
 
-**Beta Generation:** Normal(μ=0, σ=1) - symmetric distribution around zero, no separation in data generation
+**Beta Generation:** Normal($\mu=0, \sigma=1$) - symmetric distribution around zero, no separation in data generation
 
 **Results:**
 
@@ -341,9 +341,9 @@ This 4-panel figure shows:
 
 **Figure 2: Gaussian Beta Scenario**
 
-![Gaussian Scenario Results](results/project4/scenario_gaussian.pdf)
+![Gaussian Scenario Results](project4files/results/project4/scenario_gaussian.png)
 
-Location: `project4files/results/project4/scenario_gaussian.pdf`
+Location: `project4files/results/project4/scenario_gaussian.png`
 
 **Winner:** **LinUCB**
 
@@ -368,7 +368,6 @@ Location: `project4files/results/project4/scenario_gaussian.pdf`
 - Thompson's aggressive sampling backfires here
 - Forced sampling does not work well possibly because of violation of theoretical assumptions
 
----
 
 ### Scenario 3: Sparse Coefficients (Weak Signals) - LinUCB Wins Again
 
@@ -387,9 +386,9 @@ Location: `project4files/results/project4/scenario_gaussian.pdf`
 
 **Figure 3: Sparse Coefficients Scenario**
 
-![Sparse Scenario Results](results/project4/scenario_sparse.pdf)
+![Sparse Scenario Results](project4files/results/project4/scenario_sparse.png)
 
-Location: `project4files/results/project4/scenario_sparse.pdf`
+Location: `project4files/results/project4/scenario_sparse.png`
 
 **Why LinUCB wins with weak signals:**
 - High confidence bounds prevent premature commitment
@@ -425,15 +424,15 @@ Location: `project4files/results/project4/scenario_sparse.pdf`
 
 **Figure 4: Heavy-Tailed Beta Scenario**
 
-![Heavy-Tailed Scenario Results](results/project4/scenario_heavy_tailed.pdf)
+![Heavy-Tailed Scenario Results](project4files/results/project4/scenario_heavy_tailed.png)
 
-Location: `project4files/results/project4/scenario_heavy_tailed.pdf`
+Location: `project4files/results/project4/scenario_heavy_tailed.png`
 
 **Winner:** **LinUCB**
 
 **Why LinUCB wins with heavy tails:**
 - Conservative confidence bounds prevent catastrophic mistakes with outlier coefficients
-- UCB exploration robust to extreme values in β
+- UCB exploration robust to extreme values in $\beta$
 - High variance from t(df=3) requires cautious approach
 - LinUCB's pessimism optimal when coefficients unpredictable
 
@@ -443,7 +442,7 @@ Location: `project4files/results/project4/scenario_heavy_tailed.pdf`
 - Thompson vs Forced: **30.3% improvement**
 
 **Surprising Finding:** Forced Sampling has **lowest beta error** (0.7341) but **worst regret** (110.12)
-- Strong evidence that estimation quality ≠ decision quality
+- Strong evidence that estimation quality does not equal decision quality
 - Forced sampling gets good estimates but poor exploration
 - Quantile regression handles outliers well (as designed)
 
@@ -605,22 +604,22 @@ All scenario figures are 4-panel comprehensive comparisons:
 **Available Figures:**
 
 1. **Default Scenario** 
-   - File: `results/project4/scenario_default.pdf`
+   - File: `results/project4/scenario_default.png`
    - Shows: Epsilon-Greedy winning with fastest convergence
    - Key insight: All modern algorithms converge similarly
 
 2. **Gaussian Beta** 
-   - File: `results/project4/scenario_gaussian.pdf`
+   - File: `results/project4/scenario_gaussian.png`
    - Shows: LinUCB steady, Thompson Sampling volatile
    - Key insight: Algorithm choice critical with zero-mean coefficients
 
 3. **Sparse Coefficients** 
-   - File: `results/project4/scenario_sparse.pdf`
+   - File: `results/project4/scenario_sparse.png`
    - Shows: LinUCB's conservative approach wins
    - Key insight: Weak signals require cautious exploration
 
 4. **Heavy-Tailed Beta** 
-   - File: `results/project4/scenario_heavy_tailed.pdf`
+   - File: `results/project4/scenario_heavy_tailed.png`
    - Shows: LinUCB wins, Thompson has highest variance
    - Key insight: Robustness critical with extreme coefficients
 
@@ -645,7 +644,7 @@ Based on **real experimental results** from **all 4 complete scenarios**:
 4. **Epsilon-Greedy best for standard cases** - wins on uniform coefficients, 2nd in all others
 5. **Thompson Sampling consistently underperforms** - never wins, sensitive to assumptions
 6. **Forced Sampling obsolete** - dead last in all scenarios, 31-80% worse than modern algorithms
-7. **Better estimation ≠ lower regret** - exploration efficiency matters more (proven in 3/4 scenarios)
+7. **Better estimation does not equal lower regret** - exploration efficiency matters more (proven in 3/4 scenarios)
 8. **All algorithms have similar runtime** - choose based on performance, not speed
 
 However, this simulation study is based on simple data generating process, the estimation task is relatively easy compared with exploration. Therefore, the performance ranking might be reversed for other more complicated data generating processes. 
@@ -700,7 +699,7 @@ One python script containing all the functions. Used multiple notebooks for diff
 Modular structure, and one-line execution with Makefile. 
 
 **Key Changes:**
-1. **Separation of Concerns:** Simulation ≠ Analysis ≠ Visualization
+1. **Separation of Concerns:** Simulation, Analysis, and Visualization are separate
 2. **Reusable Components:** Generators, algorithms, plotting utilities
 3. **Testing:** Verify correctness before running experiments
 4. **Documentation:** README, docstrings, comments
