@@ -63,7 +63,7 @@ open results/project4/scenario_default.pdf
 ├── README.md                      # This documentation file
 ├── requirements.txt               # Python dependencies
 ├── .gitignore                     # Git ignore rules
-├── report-Xie                     # Project report
+├── report-Xie.md                  # Project report
 │
 ├── src/                           # Core modules from Projects 2-3
 │   ├── __init__.py
@@ -374,7 +374,7 @@ Even faster test for development (3 sims, 50 rounds).
 ```bash
 make verify
 ```
-Comprehensive verification of all components.
+Comprehensive verification (runs check-setup + quick-test).
 
 ---
 
