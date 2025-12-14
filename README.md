@@ -201,98 +201,8 @@ Select option 4 in interactive mode to specify your own:
 - **Pros:** Theoretically optimal, efficient exploration
 - **Cons:** Requires distributional assumptions
 
----
+--- 
 
-## Scenarios
-
-### 1. Default (Baseline)
-```python
-make scenario-default
-```
-- **Beta:** Uniform([0.5, 1], [1, 1.5])
-- **Research Question:** Standard baseline performance
-- **Use Case:** Comparison against Projects 2-3
-
-### 2. Gaussian (Zero-Mean)
-```python
-make scenario-gaussian
-```
-- **Beta:** Normal(μ=0, σ=1)
-- **Research Question:** How do algorithms handle symmetric, zero-mean coefficients?
-- **Use Case:** Unbiased coefficient distributions
-
-### 3. Heterogeneous Arms
-```python
-make scenario-heterogeneous
-```
-- **Beta:** Different distribution per arm (Gaussian + Uniform)
-- **Research Question:** Robustness to arm heterogeneity?
-- **Use Case:** Real-world scenarios with diverse arm characteristics
-
-### 4. Sparse Coefficients
-```python
-make scenario-sparse
-```
-- **Beta:** Uniform([-0.3, 0.3]) - weak signals
-- **Research Question:** Weak signal detection capability?
-- **Use Case:** Sparse feature settings
-
-### 5. Heavy-Tailed Beta
-```python
-make scenario-heavy
-```
-- **Beta:** t(df=3) - extreme coefficient values
-- **Research Question:** Handling outlier coefficients?
-- **Use Case:** Unstable/high-variance environments
-
-### 6. Multiple Arms
-```python
-make scenario-multi
-```
-- **K:** 5 arms (instead of 2)
-- **Research Question:** Scalability to more arms?
-- **Use Case:** Large action spaces
-
----
-
-## Experimental Sweeps
-
-### 1. Tail Heaviness (df)
-```python
-make exp-df-sweep
-```
-**Varies:** df ∈ [1.5, 2.25, 3, 5, 10]  
-**Research Question:** How do algorithms perform as errors get heavier tails?
-
-### 2. Quantile Level (τ)
-```python
-make exp-tau-sweep
-```
-**Varies:** τ ∈ [0.25, 0.5, 0.75]  
-**Research Question:** How does target quantile affect performance?
-
-### 3. Context Dimension (d)
-```python
-make exp-dim-sweep
-```
-**Varies:** d ∈ [5, 10, 20, 30]  
-**Research Question:** How do algorithms scale with dimension?
-
-### 4. Number of Arms (K)
-```python
-make exp-arms-sweep
-```
-**Varies:** K ∈ [2, 3, 5, 8]  
-**Research Question:** How do algorithms scale with more arms?
-
-### 5. Beta Generation Strategy
-```python
-make exp-beta-comparison
-```
-**Compares:** Uniform, Gaussian, Heavy-tailed, Sparse  
-**Research Question:** Which beta distribution is most challenging?
-
----
 
 ## Usage Examples
 
@@ -428,36 +338,6 @@ pip install -r requirements.txt
 
 ---
 
-## Course Concepts Applied
-
-### From STATS 607
-
-1. **Software Engineering**
-   - Modular design with clear interfaces
-   - Comprehensive testing and validation
-   - Reproducibility through fixed seeds
-   - Professional documentation
-
-2. **Optimization**
-   - Quantile regression optimization
-   - Numerical stability techniques
-   - Efficient matrix operations
-   - Parallelization strategies
-
-3. **Statistical Methods**
-   - Monte Carlo simulation
-   - Bootstrap confidence intervals
-   - Heavy-tailed distribution handling
-   - Robust regression techniques
-
-4. **Algorithm Design**
-   - Exploration-exploitation trade-offs
-   - Online learning algorithms
-   - Adaptive decision making
-   - Bayesian inference (Thompson Sampling)
-
----
-
 ## Reproducibility
 
 All experiments use **fixed random seeds** (default: 42) for reproducibility.
@@ -473,7 +353,6 @@ This will:
 4. Generate all figures
 5. Create comprehensive report
 
-**Expected Runtime:** 3-4 hours
 
 ---
 
@@ -576,21 +455,6 @@ study = Project4Simulation(
 
 ---
 
-## Citation
-
-If you use this code in your research, please cite:
-```bibtex
-@misc{xie2025project4,
-  author = {Xie, Siyu},
-  title = {Multi-Algorithm Quantile Bandit Comparison: 
-           A Flexible Framework for Robust Contextual Bandits},
-  year = {2025},
-  course = {STATS 607 - Computational Methods for Statistics},
-  institution = {University of Michigan}
-}
-```
-
----
 
 ## References
 
@@ -599,22 +463,7 @@ If you use this code in your research, please cite:
 3. Agrawal, S., & Goyal, N. (2013). "Thompson Sampling for Contextual Bandits with Linear Payoffs." *ICML*
 4. Koenker, R. (2005). "Quantile Regression." *Cambridge University Press*
 
----
-
-## License
-
-This project is for educational purposes as part of STATS 607 coursework at the University of Michigan.
-
----
-
-## Contact
-
-For questions or issues:
-- **Author:** Siyu Xie
-- **Course:** STATS 607, Fall 2025
-- **Institution:** University of Michigan, Ann Arbor
-
----
+--- 
 
 ## Appendix: Complete Command Reference
 
